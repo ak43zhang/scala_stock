@@ -45,7 +45,7 @@ object risk_verify2 {
 
 
 //    val start_time ="2015-01-01"
-    val start_time ="2025-05-23"
+    val start_time ="2025-01-01"
     val end_time ="2025-05-23"
     
     val r1_table = "result_expect_risk1"
@@ -62,6 +62,7 @@ object risk_verify2 {
     data20_df.persist(StorageLevel.MEMORY_AND_DISK_SER)
     data20_df.createOrReplaceTempView("data20_df")
 
+    //压力支撑数据
     val ps_df = spark.read.parquet("file:///D:\\gsdata\\pressure_support_calculator\\valid_results_pressure_advanced_dip_strategy")
       .select("stock_code","trade_time","channel_position","support_ratio","pressure_ratio")
 //        .where(s"trade_time between '$start_time' and '$end_time'")
@@ -110,13 +111,23 @@ object risk_verify2 {
       val ps2_df = ps_df.where(s"trade_time='$yes_day'")
       ps2_df.createOrReplaceTempView("ps")
 
-      //风险数据sql+通达信风险数据
+      //风险数据sql+通达信风险数据（较新的）
       //暂时未加入：业绩公告预警,累计经营现金流偏少,关联交易风险,高商誉风险,公司被监管警示,大股东离婚,子公司风险,公允价值收益异常,主力资金卖出,交易所监管,行政监管措施或处罚,公司被立案调查,高层协助有关机构调查,股东或子公司预重整,市盈率过高,募投项目延期,A股溢价过高,分析师评级下调,股价脚踝斩,拟大比例减持,可转债临近转股期,市净率过高,停牌次数多,十大股东总持股占比小,关联人员市场禁入,公司预重整,多元化经营风险,上市首日遭爆炒,年营收偏低,可能被*ST,会计师事务所变动,审计报告其他非标,净资产可能低于亏损,审计报告保留意见,分红不达标,定期报告存疑,*ST股票,财务造假,净资产偏低,资金占用或违规担保,股价偏低,可能终止上市,年报被问询,市值偏小,拟主动退市
       val risk_df = spark.sql(
         """
-          |(select `代码`,`风险类型` from venture_year) union (select `代码`,`风险类型` from venture) union (select stock_code as `代码`,concat('risk_',s_type) as `风险类型` from data_risk_tdx where f_type = 'ST风险和退市' and s_type not in ('年营收偏低','会计师事务所变动','审计报告其他非标','审计报告保留意见')) union (select stock_code as `代码`,concat('risk_',s_type) as `风险类型` from data_risk_tdx where s_type = '财报亏损' and reason REGEXP '(?=.*亿)(?=.*2025)') union (select  stock_code as `代码`,concat('risk_',s_type) as `风险类型`  from data_risk_tdx where s_type in ('控股股东高质押','长期不分红' ,'业绩变脸风险'  ,'大比例解禁' ,'股权分散' ,'失信被执行' ,'事故或停产' ,'未能如期披露财报' ,'银行账户被冻结' ,'高层或股东被立案调查' ,'清仓式减持' ,'债券违约' ,'理财风险' ,'补充质押' ) ) union (select stock_code as `代码`,concat('risk_',s_type) as `风险类型` from data_risk_tdx where s_type in ('高管人员偏少','应收账款占收入比例过高','短期负债风险','高应收款隐忧','高财务费用','扣非净利润陡降风险','非经常性损益占比过高','高负债率','经营现金流风险','最大供应商采购占比高','业绩骤减','高担保比例','高质押风险','营收陡降风险','多年扣非亏损','投资收益巨亏','最大客户占营收比过高','应收款增加,低现金流','应付债券占比高','已大比例减持','高库存隐忧','高层涉刑','营业外支出过大','负债率逐年递增','员工人数陡降','高预付款隐忧','研发费用减少','研发人员减少','被调出重要指数','员工人数偏少','毛利率偏低','高销售费用','货币资产充足仍举债','存货同比大幅增加','交易异常监管','被频繁问询监管','采购暂停或市场禁入','负面舆情','交易所警示','三费占营收比例高','控制权纠纷或争斗','股权冻结') and reason REGEXP '(?=.*2025)')
+          |(select `代码`,`风险类型` from venture_year)
+          |union
+          |(select `代码`,`风险类型` from venture)
+          |union
+          |(select stock_code as `代码`,concat('risk_',s_type) as `风险类型` from data_risk_tdx where f_type = 'ST风险和退市' and s_type not in ('年营收偏低','会计师事务所变动','审计报告其他非标','审计报告保留意见'))
+          |union
+          |(select stock_code as `代码`,concat('risk_',s_type) as `风险类型` from data_risk_tdx where s_type = '财报亏损' and reason REGEXP '(?=.*亿)(?=.*2025)')
+          |union
+          |(select stock_code as `代码`,concat('risk_',s_type) as `风险类型` from data_risk_tdx where s_type in ('控股股东高质押','长期不分红' ,'业绩变脸风险'  ,'大比例解禁' ,'股权分散' ,'失信被执行' ,'事故或停产' ,'未能如期披露财报' ,'银行账户被冻结' ,'高层或股东被立案调查' ,'清仓式减持' ,'债券违约' ,'理财风险' ,'补充质押' ))
+          |union
+          |(select stock_code as `代码`,concat('risk_',s_type) as `风险类型` from data_risk_tdx where s_type in ('高管人员偏少','应收账款占收入比例过高','短期负债风险','高应收款隐忧','高财务费用','扣非净利润陡降风险','非经常性损益占比过高','高负债率','经营现金流风险','最大供应商采购占比高','业绩骤减','高担保比例','高质押风险','营收陡降风险','多年扣非亏损','投资收益巨亏','最大客户占营收比过高','应收款增加,低现金流','应付债券占比高','已大比例减持','高库存隐忧','高层涉刑','营业外支出过大','负债率逐年递增','员工人数陡降','高预付款隐忧','研发费用减少','研发人员减少','被调出重要指数','员工人数偏少','毛利率偏低','高销售费用','货币资产充足仍举债','存货同比大幅增加','交易异常监管','被频繁问询监管','采购暂停或市场禁入','负面舆情','交易所警示','三费占营收比例高','控制权纠纷或争斗','股权冻结') and reason REGEXP '(?=.*2025)')
           |""".stripMargin)
-      risk_df.where("`风险类型` not in ('股东大会','预约披露时间_巨潮资讯')")
+      risk_df.where("`风险类型` not in ('股东大会','预约披露时间_巨潮资讯','预约披露时间_东方财富')")
         .createOrReplaceTempView("venture2")
 
       val risk2_df = spark.sql(
@@ -139,93 +150,93 @@ object risk_verify2 {
       println("fx1_df-----------"+fx1_df.count())
       fx1_df.show(false)
 
-      fx1_df.select("dm").repartition(1).write.mode("overwrite").option("encoding", "UTF-8")
-        .text(s"file:///C:\\Users\\Administrator\\Desktop\\gs2024\\filter_table\\${setdate_}\\风险")
-
-      try {
-        // 通过 Spark 执行 SQL 删除语句
-        // 编写 SQL 删除语句
-        val deleteQuery = s"DELETE FROM $r1_table WHERE trade_date='$setdate'"
-        MysqlTools.mysqlEx(s"$r1_table", deleteQuery)
-        println("数据删除成功！")
-      } catch {
-        case e: Exception => println(s"数据删除失败: ${e.getMessage}")
-      }
-
-      fx1_df.withColumn("fxlxs", concat_ws(",", col("fxlxs")))
-        .write.mode("append").jdbc(url,s"$r1_table",properties)
-
-
-      //,t3_kpzf,t3_zgzf,t3_zdzf,t3_spzf    dm is not null and
-      spark.sql(
-        s"""
-           |select dm,jc,t1_trade_date,t2_trade_date,t0_kxzt,t1_kxzt,t1_ln,t1_zrlnb,t0_spzf,t1_qjzf,t1_stzf,t1_kpzf,t1_zgzf,t1_zdzf,t1_spzf,t2_sfzt,t2_cjzt,t2_kpzf,t2_zgzf,t2_zdzf,t2_spzf
-           |from ta1 left join (select * from data20_df where t1_trade_date='$yes_day') as d2 on d2.t1_trade_date = ta1.yes_day and d2.stock_code = ta1.dm
-           |""".stripMargin).createOrReplaceTempView("ta2")
-
-      val fx2_df = spark.sql(
-        s"""
-          |select *,'$setdate' as trade_date,
-          |concat_ws(',',case when t1_qjzf>=6 then '1' end,
-          |case when t1_zgzf>=3 then '2' end,
-          |case when t1_kxzt='红柱上影线' then '3' end,
-          |case when t1_zrlnb>=1.3 then '4' end,
-          |case when t1_stzf>=3 then '5' end,
-          |case when channel_position>=80 then '6' end ) as fxlx
-          | from ta2 left join ps on ta2.t1_trade_date = ps.trade_time and ta2.dm = ps.stock_code
-          |where t1_qjzf>=6 or t1_zgzf>=3 or t1_kxzt ='红柱上影线' or t1_zrlnb>=1.5 or t1_stzf>=3 or channel_position>=80
-          |order by channel_position desc
-          |""".stripMargin)
-      println("========================================================================================fx2_df")
-      println("fx2_df-----------"+fx2_df.count())
-      fx2_df.show()
-      fx2_df.createOrReplaceTempView("fx2_df")
-
-      fx2_df.select("dm").repartition(1).write.mode("overwrite").option("encoding", "UTF-8")
-        .text(s"file:///C:\\Users\\Administrator\\Desktop\\gs2024\\filter_table\\${setdate_}\\风险2")
-
-      try {
-        // 通过 Spark 执行 SQL 删除语句
-        val deleteQuery = s"DELETE FROM $r2_table WHERE trade_date='$setdate'"
-        MysqlTools.mysqlEx(s"$r2_table", deleteQuery)
-        println("数据删除成功！")
-      } catch {
-        case e: Exception => println(s"数据删除失败: ${e.getMessage}")
-      }
-
-      fx2_df.select("dm","trade_date","fxlx").write.mode("append").jdbc(url,s"$r2_table",properties)
-
-      val nf_df = spark.sql(
-        s"""
-           |select ta1.* from ta1 left join fx2_df on ta1.yes_day=fx2_df.t1_trade_date and ta1.dm = fx2_df.dm
-           |where fx2_df.dm is null
-           |""".stripMargin)
-
-      println("========================================================================================nf_df")
-      println("nf_df-----------"+nf_df.count())
-      nf_df.show(1000)
-
-      nf_df.select("dm").repartition(1).write.mode("overwrite").option("encoding", "UTF-8")
-        .text(s"file:///C:\\Users\\Administrator\\Desktop\\gs2024\\filter_table\\${setdate_}\\关注")
-
-      try {
-        // 通过 Spark 执行 SQL 删除语句
-        val deleteQuery = s"DELETE FROM $n1_table WHERE trade_date='$setdate'"
-        MysqlTools.mysqlEx(s"$n1_table", deleteQuery)
-        println("数据删除成功！")
-      } catch {
-        case e: Exception => println(s"数据删除失败: ${e.getMessage}")
-      }
-
-      nf_df.select("dm","trade_date").write.mode("append").jdbc(url,s"$n1_table",properties)
-
-      nf_df.select("dm").createOrReplaceTempView("n1")
-
-      spark.sql(
-        s"""
-          |select n1.dm from n1 left join (select * from ztb where trade_date between '$n_day_ago' and '$yes_day') as z on n1.dm=z.`股票代码` where z.`股票代码` is not null
-          |""".stripMargin).select("dm").repartition(1).write.mode("overwrite").option("encoding", "UTF-8")
-        .text(s"file:///C:\\Users\\Administrator\\Desktop\\gs2024\\filter_table\\${setdate_}\\关注7日内涨停")
+//      fx1_df.select("dm").repartition(1).write.mode("overwrite").option("encoding", "UTF-8")
+//        .text(s"file:///C:\\Users\\Administrator\\Desktop\\gs2024\\filter_table\\${setdate_}\\风险")
+//
+//      try {
+//        // 通过 Spark 执行 SQL 删除语句
+//        // 编写 SQL 删除语句
+//        val deleteQuery = s"DELETE FROM $r1_table WHERE trade_date='$setdate'"
+//        MysqlTools.mysqlEx(s"$r1_table", deleteQuery)
+//        println("数据删除成功！")
+//      } catch {
+//        case e: Exception => println(s"数据删除失败: ${e.getMessage}")
+//      }
+//
+//      fx1_df.withColumn("fxlxs", concat_ws(",", col("fxlxs")))
+//        .write.mode("append").jdbc(url,s"$r1_table",properties)
+//
+//
+//      //,t3_kpzf,t3_zgzf,t3_zdzf,t3_spzf    dm is not null and
+//      spark.sql(
+//        s"""
+//           |select dm,jc,t1_trade_date,t2_trade_date,t0_kxzt,t1_kxzt,t1_ln,t1_zrlnb,t0_spzf,t1_qjzf,t1_stzf,t1_kpzf,t1_zgzf,t1_zdzf,t1_spzf,t2_sfzt,t2_cjzt,t2_kpzf,t2_zgzf,t2_zdzf,t2_spzf
+//           |from ta1 left join (select * from data20_df where t1_trade_date='$yes_day') as d2 on d2.t1_trade_date = ta1.yes_day and d2.stock_code = ta1.dm
+//           |""".stripMargin).createOrReplaceTempView("ta2")
+//
+//      val fx2_df = spark.sql(
+//        s"""
+//          |select *,'$setdate' as trade_date,
+//          |concat_ws(',',case when t1_qjzf>=6 then '1' end,
+//          |case when t1_zgzf>=3 then '2' end,
+//          |case when t1_kxzt='红柱上影线' then '3' end,
+//          |case when t1_zrlnb>=1.3 then '4' end,
+//          |case when t1_stzf>=3 then '5' end,
+//          |case when channel_position>=80 then '6' end ) as fxlx
+//          | from ta2 left join ps on ta2.t1_trade_date = ps.trade_time and ta2.dm = ps.stock_code
+//          |where t1_qjzf>=6 or t1_zgzf>=3 or t1_kxzt ='红柱上影线' or t1_zrlnb>=1.5 or t1_stzf>=3 or channel_position>=80
+//          |order by channel_position desc
+//          |""".stripMargin)
+//      println("========================================================================================fx2_df")
+//      println("fx2_df-----------"+fx2_df.count())
+//      fx2_df.show()
+//      fx2_df.createOrReplaceTempView("fx2_df")
+//
+//      fx2_df.select("dm").repartition(1).write.mode("overwrite").option("encoding", "UTF-8")
+//        .text(s"file:///C:\\Users\\Administrator\\Desktop\\gs2024\\filter_table\\${setdate_}\\风险2")
+//
+//      try {
+//        // 通过 Spark 执行 SQL 删除语句
+//        val deleteQuery = s"DELETE FROM $r2_table WHERE trade_date='$setdate'"
+//        MysqlTools.mysqlEx(s"$r2_table", deleteQuery)
+//        println("数据删除成功！")
+//      } catch {
+//        case e: Exception => println(s"数据删除失败: ${e.getMessage}")
+//      }
+//
+//      fx2_df.select("dm","trade_date","fxlx").write.mode("append").jdbc(url,s"$r2_table",properties)
+//
+//      val nf_df = spark.sql(
+//        s"""
+//           |select ta1.* from ta1 left join fx2_df on ta1.yes_day=fx2_df.t1_trade_date and ta1.dm = fx2_df.dm
+//           |where fx2_df.dm is null
+//           |""".stripMargin)
+//
+//      println("========================================================================================nf_df")
+//      println("nf_df-----------"+nf_df.count())
+//      nf_df.show(1000)
+//
+//      nf_df.select("dm").repartition(1).write.mode("overwrite").option("encoding", "UTF-8")
+//        .text(s"file:///C:\\Users\\Administrator\\Desktop\\gs2024\\filter_table\\${setdate_}\\关注")
+//
+//      try {
+//        // 通过 Spark 执行 SQL 删除语句
+//        val deleteQuery = s"DELETE FROM $n1_table WHERE trade_date='$setdate'"
+//        MysqlTools.mysqlEx(s"$n1_table", deleteQuery)
+//        println("数据删除成功！")
+//      } catch {
+//        case e: Exception => println(s"数据删除失败: ${e.getMessage}")
+//      }
+//
+//      nf_df.select("dm","trade_date").write.mode("append").jdbc(url,s"$n1_table",properties)
+//
+//      nf_df.select("dm").createOrReplaceTempView("n1")
+//
+//      spark.sql(
+//        s"""
+//          |select n1.dm from n1 left join (select * from ztb where trade_date between '$n_day_ago' and '$yes_day') as z on n1.dm=z.`股票代码` where z.`股票代码` is not null
+//          |""".stripMargin).select("dm").repartition(1).write.mode("overwrite").option("encoding", "UTF-8")
+//        .text(s"file:///C:\\Users\\Administrator\\Desktop\\gs2024\\filter_table\\${setdate_}\\关注7日内涨停")
 
       val endm = System.currentTimeMillis()
       println("共耗时：" + (endm - startm) / 1000 + "秒")

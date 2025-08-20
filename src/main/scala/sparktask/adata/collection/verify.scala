@@ -56,24 +56,24 @@ object verify {
     spark.sql(
       s"""
         |select * from data_jyrl as t1 left join gpsj_day_all_hs as t2 on t1.trade_date=t2.trade_date
-        |where t2.trade_date is null and trade_status=1 and t1.trade_date like '%$year%' and t1.trade_date<='$now_day'
+        |where t2.trade_date is null and trade_status=1 and t1.trade_date like '%$year%' and t1.trade_date<='$now_day' order by t1.trade_date
         |""".stripMargin).show()
 
     println("==============验证gpsj_hs_10days/gpsj_hs_h10days/gpsj_hs_20days数据完整性==============")
     spark.sql(
       s"""
          |select * from data_jyrl as t1 left join gpsj_hs_10days as t2 on t1.trade_date=t2.t0_trade_date
-         |where t2.t0_trade_date is null and trade_status=1 and t1.trade_date like '%$year%' and t1.trade_date<='$now_day'
+         |where t2.t0_trade_date is null and trade_status=1 and t1.trade_date like '%$year%' and t1.trade_date<='$now_day' order by t1.trade_date
          |""".stripMargin).show()
     spark.sql(
       s"""
          |select * from data_jyrl as t1 left join gpsj_hs_h10days as t2 on t1.trade_date=t2.t0_trade_date
-         |where t2.t0_trade_date is null and trade_status=1 and t1.trade_date like '%$year%' and t1.trade_date<='$now_day'
+         |where t2.t0_trade_date is null and trade_status=1 and t1.trade_date like '%$year%' and t1.trade_date<='$now_day' order by t1.trade_date
          |""".stripMargin).show()
     spark.sql(
       s"""
          |select * from data_jyrl as t1 left join gpsj_hs_20days as t2 on t1.trade_date=t2.t0_trade_date
-         |where t2.t0_trade_date is null and trade_status=1 and t1.trade_date like '%$year%' and t1.trade_date<='$now_day'
+         |where t2.t0_trade_date is null and trade_status=1 and t1.trade_date like '%$year%' and t1.trade_date<='$now_day' order by t1.trade_date
          |""".stripMargin).show()
 
     //验证涨停板数据完整性
@@ -81,7 +81,7 @@ object verify {
     spark.sql(
       s"""
          |select * from data_jyrl as t1 left join ztb_day as t2 on t1.trade_date=t2.trade_date
-         |where t2.trade_date is null and trade_status=1 and t1.trade_date like '%$year%' and t1.trade_date<='$now_day'
+         |where t2.trade_date is null and trade_status=1 and t1.trade_date like '%$year%' and t1.trade_date<='$now_day' order by t1.trade_date
          |""".stripMargin).show()
 
     //验证龙虎榜每日更新数据完整性
@@ -89,7 +89,7 @@ object verify {
     spark.sql(
       s"""
          |select * from data_jyrl as t1 left join data_lhb as t2 on t1.trade_date=t2.trade_date
-         |where t2.trade_date is null and trade_status=1 and t1.trade_date like '%$year%' and t1.trade_date<='$now_day'
+         |where t2.trade_date is null and trade_status=1 and t1.trade_date like '%$year%' and t1.trade_date<='$now_day' order by t1.trade_date
          |""".stripMargin).show()
 
     //验证龙虎榜个股数据完整新
@@ -97,7 +97,7 @@ object verify {
     spark.sql(
       s"""
          |select * from data_jyrl as t1 left join data_lhb_history2 as t2 on t1.trade_date=t2.trade_date
-         |where t2.trade_date is null and trade_status=1 and t1.trade_date like '%$year%' and t1.trade_date<='$now_day'
+         |where t2.trade_date is null and trade_status=1 and t1.trade_date like '%$year%' and t1.trade_date<='$now_day' order by t1.trade_date
          |""".stripMargin).show()
 
     //验证股市日历每日更新数据完整性
@@ -105,7 +105,7 @@ object verify {
     spark.sql(
       s"""
          |select * from data_jyrl as t1 left join data_gsdt as t2 on t1.trade_date=t2.trade_date
-         |where t2.trade_date is null and trade_status=1 and t1.trade_date like '%$year%' and t1.trade_date<='$now_day'
+         |where t2.trade_date is null and trade_status=1 and t1.trade_date like '%$year%' and t1.trade_date<='$now_day' order by t1.trade_date
          |""".stripMargin).show()
 
     //验证压力支撑数据完整性
@@ -113,7 +113,7 @@ object verify {
     spark.sql(
       s"""
          |select * from data_jyrl as t1 left join pressure_support_calculator$year as t2 on t1.trade_date=t2.trade_date
-         |where t2.trade_date is null and trade_status=1 and t1.trade_date like '%$year%' and t1.trade_date<='$now_day'
+         |where t2.trade_date is null and trade_status=1 and t1.trade_date like '%$year%' and t1.trade_date<='$now_day' order by t1.trade_date
          |""".stripMargin).show()
 
     //风险数据完整性验证 TODO
@@ -150,17 +150,17 @@ object verify {
     lhb2df.persist(StorageLevel.MEMORY_AND_DISK_SER)
     lhb2df.createOrReplaceTempView("data_lhb_history2")
 
-    val newsdf: DataFrame = spark.read.jdbc(url, "news", properties)
-    newsdf.persist(StorageLevel.MEMORY_AND_DISK_SER)
-    newsdf.createOrReplaceTempView("news")
+    val news_financial_df: DataFrame = spark.read.jdbc(url, "news_financial", properties)
+    news_financial_df.persist(StorageLevel.MEMORY_AND_DISK_SER)
+    news_financial_df.createOrReplaceTempView("news_financial")
 
-    val cls_newsdf: DataFrame = spark.read.jdbc(url, "cls_news", properties)
-    cls_newsdf.persist(StorageLevel.MEMORY_AND_DISK_SER)
-    cls_newsdf.createOrReplaceTempView("cls_news")
+    val news_cls_df: DataFrame = spark.read.jdbc(url, "news_cls", properties)
+    news_cls_df.persist(StorageLevel.MEMORY_AND_DISK_SER)
+    news_cls_df.createOrReplaceTempView("news_cls")
 
-    val combine_newsdf: DataFrame = spark.read.jdbc(url, "combine_news", properties)
-    combine_newsdf.persist(StorageLevel.MEMORY_AND_DISK_SER)
-    combine_newsdf.createOrReplaceTempView("combine_news")
+    val news_combine_df: DataFrame = spark.read.jdbc(url, "news_combine", properties)
+    news_combine_df.persist(StorageLevel.MEMORY_AND_DISK_SER)
+    news_combine_df.createOrReplaceTempView("news_combine")
 
     spark.read.parquet(s"file:///D:\\gsdata\\gpsj_day_all_hs\\trade_date_month=202*")
     .select("trade_date").distinct()

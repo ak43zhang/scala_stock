@@ -1,4 +1,4 @@
-package sparktask.adata.collection
+package spark.bus
 
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -9,9 +9,10 @@ import org.apache.spark.sql.{DataFrame, SparkSession}
 import sparktask.tools.FileTools
 
 /**
+ * 总线3
  * 制作宽表,增量宽表
  */
-object SparkMakeWideTableIncrement {
+object Bus_3_SparkMakeWideTableIncrement {
   def main(args: Array[String]): Unit = {
     val conf = new SparkConf()
       .setMaster("local[*]")
@@ -34,7 +35,7 @@ object SparkMakeWideTableIncrement {
     val startm = System.currentTimeMillis()
 
     //制作增量宽表的路径
-    val months = "2025-05,2025-06,2025-07"
+    val months = "2025-06,2025-07,2025-08"
     val m1 =months.split(",")(0)
     val m2 = months.split(",")(1)
     val m3 = months.split(",")(2)

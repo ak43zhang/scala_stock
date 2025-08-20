@@ -10,7 +10,7 @@ import sparktask.tools.MysqlTools
 
 import scala.collection.mutable.ArrayBuffer
 
-object ImportData2THS {
+object ImportData2THS_v2 {
   def main(args: Array[String]): Unit = {
     val conf = new SparkConf()
       .setMaster("local[*]")
@@ -47,8 +47,8 @@ object ImportData2THS {
 //    val setdate_ = setdate.replaceAll("-","")
 //    val year = setdate.substring(0,4)
 
-    val start_time ="2025-07-29"
-    val end_time ="2025-07-29"
+    val start_time ="2025-08-20"
+    val end_time ="2025-08-20"
     
     val r1_table = "result_expect_risk1"
     val r2_table = "result_expect_risk2"

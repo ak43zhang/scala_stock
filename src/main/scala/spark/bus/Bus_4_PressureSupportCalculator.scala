@@ -1,4 +1,4 @@
-package sparktask.adata.dwd.v2
+package spark.bus
 
 import java.time.format.DateTimeFormatter
 import java.time.{LocalDateTime, ZoneId}
@@ -14,6 +14,8 @@ import sparktask.tools.MysqlTools
 import scala.math.Ordering
 
 /**
+ * 总线4
+ *
  * 工业级金融压力支撑位计算系统
  *
  * 功能特性：
@@ -42,7 +44,7 @@ import scala.math.Ordering
  * - 算法交易风控：采用high_low_pressure/high_low_support作为硬止损点
  * - 组合策略：各指标加权平均（建议权重：布林带40%，移动平均30%，枢轴点20%，前高前低10%）
  */
-object PressureSupportCalculator2 {
+object Bus_4_PressureSupportCalculator {
   // 在类顶部添加隐式排序定义
   implicit val localDateTimeOrdering: Ordering[LocalDateTime] =
     Ordering.by(_.atZone(ZoneId.systemDefault).toInstant.toEpochMilli)
@@ -145,8 +147,8 @@ object PressureSupportCalculator2 {
 
     spark.sparkContext.setLogLevel("ERROR")//[18,19]
 
-    val start_time ="2025-07-24"
-    val end_time ="2025-07-28"
+    val start_time ="2025-08-11"
+    val end_time ="2025-08-19"
 
     val inputPath = "file:///D:\\gsdata\\gpsj_day_all_hs\\trade_date_month=202*"
     val outputPath = "file:///D:\\gsdata\\pressure_support_calculator"

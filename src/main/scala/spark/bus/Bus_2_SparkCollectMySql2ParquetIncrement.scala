@@ -1,24 +1,20 @@
-package sparktask.adata.collection
+package spark.bus
 
-import java.io.File
-import java.text.SimpleDateFormat
-import java.util.{Date, Properties}
-import java.util.logging.SimpleFormatter
+import java.util.Properties
 
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types.{DecimalType, IntegerType, StringType}
 import org.apache.spark.sql.{DataFrame, SparkSession}
-import sparktask.tools.FileTools
 
 import scala.collection.mutable.ArrayBuffer
 
 /**
- * 将mysql数据采集生成parquet文件【增量采集】
- *
+ * 总线2
+ * 将mysql中日数据采集生成parquet文件【增量采集】
  * ods原始数据层
  */
-object SparkCollectMySql2ParquetIncrement {
+object Bus_2_SparkCollectMySql2ParquetIncrement {
   def main(args: Array[String]): Unit = {
     val conf = new SparkConf()
       .setMaster("local[*]")
@@ -45,8 +41,12 @@ object SparkCollectMySql2ParquetIncrement {
 
 //    val jyrlsAll = ArrayBuffer("data2024_gpsj_day_1219")
     val jyrlsSome = ArrayBuffer(
-      "data_gpsj_day_20250725",
-      "data_gpsj_day_20250728"
+      "data_gpsj_day_20250812",
+      "data_gpsj_day_20250813",
+      "data_gpsj_day_20250814",
+      "data_gpsj_day_20250815",
+      "data_gpsj_day_20250818",
+      "data_gpsj_day_20250819"
     )
 
     /**

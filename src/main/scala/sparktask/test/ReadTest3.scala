@@ -45,6 +45,98 @@ object ReadTest3 {
 
     import spark.implicits._
 
+//    val ta1: DataFrame = spark.read.jdbc(url, "result_expect_risk1", properties)
+//    ta1.createTempView("ta1")
+//    spark.sql(
+//      """
+//        | select replace(fxlx,'risk_',''),fxlx,count(1) from (select split(fxlxs,',') as fxlxs2 from ta1) lateral view explode(fxlxs2) as fxlx  group by fxlx order by count(1) desc
+//        |""".stripMargin).show(300)
+
+
+    // ===================================================================================
+    val ta1: DataFrame = spark.read.jdbc(url, "analysis_news", properties)
+      .where("table_name='news_financial'")
+        ta1.createTempView("ta1")
+
+    spark.sql(
+      """
+        |SELECT
+        |  table_name,get_json_object(json_value, '$.消息集合') AS message_array
+        |FROM ta1
+        |""".stripMargin).createOrReplaceTempView("ta2")
+
+    spark.sql(
+      """
+        |SELECT
+        |  explode(
+        |    split(
+        |      regexp_replace(
+        |        regexp_replace(
+        |          message_array,
+        |          '^\\[|\\]$',
+        |          ''
+        |        ),
+        |        '\\}\\,\\s*\\{',
+        |        '}|||{'
+        |      ),
+        |      '\\|\\|\\|'
+        |    )
+        |  ) AS message
+        |FROM ta2
+        |
+        |""".stripMargin).createOrReplaceTempView("ta3")
+
+    spark.sql("select * from ta3").show(false)
+
+    spark.sql(
+      """
+        |SELECT
+        |  get_json_object(message, '$.消息id') AS message_ids
+        |FROM ta3
+        |
+        |""".stripMargin).where("message_ids is not null and message_ids LIKE '%,%'").show(1000,false)
+
+    // ===================================================================================
+    val tb1: DataFrame = spark.read.jdbc(url, "analysis_notices", properties)
+    tb1.createTempView("tb1")
+
+    spark.sql(
+      """
+        |SELECT
+        |    get_json_object(json_value, '$.公告集合') AS array_str
+        |  FROM tb1
+        |""".stripMargin).createOrReplaceTempView("tb2")
+
+    spark.sql(
+      """
+        |SELECT
+        |    explode(
+        |      split(
+        |        regexp_replace(
+        |          regexp_replace(
+        |            array_str,
+        |            '^\\[|\\]$',
+        |            ''
+        |          ),
+        |          '\\}\\,\\s*\\{',
+        |          '}|||{'
+        |        ),
+        |        '\\|\\|\\|'
+        |      )
+        |    ) AS announcement
+        |  FROM tb2
+        |
+        |""".stripMargin).createOrReplaceTempView("tb3")
+
+    spark.sql(
+      """
+        |SELECT
+        |  get_json_object(announcement, '$.公告id') AS announcement_id
+        |FROM tb3
+        |""".stripMargin)
+//      .where("announcement_id is not null and announcement_id LIKE '%,%'")
+      .show(1000,false)
+
 //    val ta1: DataFrame = spark.read.jdbc(url, "tld_filter", properties)
 //      .where("trade_date > '2023-01-01'")
 ////      .where("trade_date between '2023-04-01' and '2024-09-01'")
@@ -77,9 +169,9 @@ object ReadTest3 {
 //                middf1.show(100000)
 
 
-    val ta4: DataFrame = spark.read.parquet("file:///D:\\gsdata\\gpsj_day_all_hs\\trade_date_month=2025-03")
-    ta4.createOrReplaceTempView("ta4")
-    spark.sql("select trade_date,count(1) from ta4 group by trade_date order by trade_date desc").show()
+//    val ta4: DataFrame = spark.read.parquet("file:///D:\\gsdata\\gpsj_day_all_hs\\trade_date_month=2025-03")
+//    ta4.createOrReplaceTempView("ta4")
+//    spark.sql("select trade_date,count(1) from ta4 group by trade_date order by trade_date desc").show()
 
 
 
