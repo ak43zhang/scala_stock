@@ -1,4 +1,4 @@
-package sparktask.adata.dwd.v2
+package spark.bus
 
 import java.util.Properties
 
@@ -8,9 +8,15 @@ import org.apache.spark.sql.types._
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
 /**
- * ai analysis to wide_table
+ * 总线6
+ * 将ai分析出来的数据制作成宽表parquet
+ * 后期补录数据
  */
-object AiAnalysis2WideTable {
+object Bus_6_AiAnalysis2WideTable {
+
+  val start_time = "2025-10-10"
+  val end_time = "2025-10-15"
+
   def main(args: Array[String]): Unit = {
     val conf = new SparkConf()
       .setMaster("local[*]")
@@ -47,9 +53,9 @@ object AiAnalysis2WideTable {
     analysis_news2Parquet(spark,url,properties)
     analysis_notices2Parquet(spark,url,properties)
     analysis_ztb2Parquet(spark,url,properties)
-//    analysis2news(spark)
-//    analysis2notices(spark)
-//    analysis2ztb(spark)
+    analysis2news(spark)
+    analysis2notices(spark)
+    analysis2ztb(spark)
 
     val endm = System.currentTimeMillis()
     println("共耗时：" + (endm - startm) / 1000 + "秒")
@@ -196,7 +202,6 @@ object AiAnalysis2WideTable {
   }
 
   def analysis_ztb2Parquet(spark:SparkSession,url:String,properties: Properties): Unit ={
-    import spark.implicits._
     val df: DataFrame = spark.read.jdbc(url, "analysis_ztb", properties)
     df.createOrReplaceTempView("ztb")
     val resultdf = spark.sql(
@@ -224,7 +229,10 @@ object AiAnalysis2WideTable {
    */
   def analysis2news(spark:SparkSession): Unit ={
     val news_df = spark.read.parquet("file:///D:\\gsdata\\analysis_news")
-    news_df.where("time between '2025-07-16 15:00:00' and '2025-07-17 09:15:00' ").createOrReplaceTempView("news")
+    news_df.where(s"time between '${start_time} 15:00:00' and '${end_time} 09:15:00' ")
+      .createOrReplaceTempView("news")
+
+    println("======================news===========================")
 
     //板块分析
     spark.sql(
@@ -250,13 +258,14 @@ object AiAnalysis2WideTable {
    */
   def analysis2notices(spark:SparkSession): Unit ={
     val notice_df = spark.read.parquet("file:///D:\\gsdata\\analysis_notices")
-    //      .where("time between '2025-06-03' and '2025-06-04'")
+          .where(s"time between '${start_time}' and '${end_time}'")
     notice_df.createOrReplaceTempView("notices")
 
+    println("======================notices===========================")
     val notice_risk_df = spark.sql(
       """
         |select * from notices
-        |where `消息类型` = '利空'
+        |where `消息类型` = '利好'
         |
         |""".stripMargin)
     notice_risk_df.show()
@@ -288,14 +297,15 @@ object AiAnalysis2WideTable {
 
 //    ztb_df.printSchema()
 
+    println("======================ztb===========================")
     spark.sql(
-      """
-        |select bk,count(1) from ztb lateral view explode(bkxx.`板块`) as bk where sj = '2025-07-29' group by bk order by count(1) desc
+      s"""
+        |select bk,count(1) from ztb lateral view explode(bkxx.`板块`) as bk where sj between '${start_time}' and '${end_time}' group by bk order by count(1) desc
         |""".stripMargin).show()
 
     spark.sql(
-      """
-        |select gn,count(1) from ztb lateral view explode(gnxx.`概念`) as gn where sj = '2025-07-29' group by gn order by count(1) desc
+      s"""
+        |select gn,count(1) from ztb lateral view explode(gnxx.`概念`) as gn where sj between '${start_time}' and '${end_time}' group by gn order by count(1) desc
         |""".stripMargin).show()
 
 //    ztb_df.show(false)

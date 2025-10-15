@@ -35,7 +35,7 @@ object Bus_3_SparkMakeWideTableIncrement {
     val startm = System.currentTimeMillis()
 
     //制作增量宽表的路径
-    val months = "2025-06,2025-07,2025-08"
+    val months = "2025-08,2025-09,2025-10"
     val m1 =months.split(",")(0)
     val m2 = months.split(",")(1)
     val m3 = months.split(",")(2)

@@ -1,9 +1,9 @@
-package sparktask.test
+package spark.analysis
 
 import java.util.Properties
 
 import org.apache.spark.SparkConf
-import org.apache.spark.sql.functions.{col, concat_ws}
+import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.storage.StorageLevel
 import sparktask.tools.MysqlTools
@@ -57,8 +57,8 @@ object SparkAnalysisZtb {
     properties.setProperty("driver", driver)
     val startm = System.currentTimeMillis()
 
-    val start_time ="2018-01-01"
-    val end_time ="2022-01-05"
+    val start_time = "2025-10-13"
+    val end_time ="2025-10-15"
 
     //涨停板dataframe
     val ztb_df: DataFrame = spark.read.jdbc(url, "ztb_day", properties)
@@ -83,7 +83,7 @@ object SparkAnalysisZtb {
       "t2_close","t2_sfzt","t2_cjzt","t2_kxzt","t2_ln","t2_zrlnb","t2_qjzf","t2_stzf","t2_kpzf","t2_zgzf","t2_zdzf","t2_spzf"
 //      "t3_close","t3_sfzt","t3_cjzt","t3_kxzt","t3_ln","t3_zrlnb","t3_qjzf","t3_stzf","t3_kpzf","t3_zgzf","t3_zdzf","t3_spzf"
     )//"t3_sfzt","t3_cjzt","t3_kxzt","t3_ln","t3_zrlnb","t3_qjzf","t3_stzf","t3_kpzf","t3_zgzf","t3_zdzf","t3_spzf"
-    val data20_df = spark.read.parquet("file:///D:\\gsdata\\gpsj_hs_10days\\trade_date_month=20[20,21,22,23,24,25]*")
+    val data20_df = spark.read.parquet("file:///D:\\gsdata\\gpsj_hs_10days\\trade_date_month=20[15,16,17,18,19,20,21,22,23,24,25]*")
       .select(columnsList.map(col): _*)
     data20_df.persist(StorageLevel.MEMORY_AND_DISK_SER)
     data20_df.createOrReplaceTempView("data20_df")
@@ -109,7 +109,8 @@ object SparkAnalysisZtb {
       val date_list = spark.read.jdbc(url, "data_jyrl", properties).orderBy(col("trade_date").desc)
         .where(s"trade_status=1 and trade_date<'$jyrl'").collect().map(f => f.getAs[String]("trade_date"))
       val yes_day = date_list.toList(0)
-      val n_day_ago = date_list.toList(10)
+      val yes_day_5 = date_list.toList(5)
+      val n_day_ago = date_list.toList(20)
 //      println(n_day_ago)
       val year = setdate.substring(0,4)
       println(s"==========================设置时间为${setdate},则处理的是${setdate}的股票，分析股票则用上一交易日：${yes_day}============================")
@@ -118,17 +119,17 @@ object SparkAnalysisZtb {
       var basequerydf: DataFrame = spark.read.jdbc(url, s"wencaiquery_basequery_$year", properties)
         .where(s"trade_date='$setdate'")
         .select("`代码`", "`简称`")
-      println("querydf-----------"+basequerydf.count())
+//      println("querydf-----------"+basequerydf.count())
       basequerydf.createOrReplaceTempView("basequery")
 
       var venturedf: DataFrame = spark.read.jdbc(url, s"wencaiquery_venture_$year", properties)
         .where(s"trade_date='$setdate'")
-      println("venturedf-----------"+venturedf.count())
+//      println("venturedf-----------"+venturedf.count())
       venturedf.createOrReplaceTempView("venture")
 
       var venture_year_df: DataFrame = spark.read.jdbc(url, s"wencaiquery_venture_year", properties)
         .where(s"year='$year'")
-      println("venture_year_df-----------"+venture_year_df.count())
+//      println("venture_year_df-----------"+venture_year_df.count())
       venture_year_df.createOrReplaceTempView("venture_year")
 
       //风险数据sql+通达信风险数据
@@ -158,8 +159,9 @@ object SparkAnalysisZtb {
 //      risk_level_df.where("level is null").select("`风险类型`").distinct().show(4000,false)
       risk_level_df.createOrReplaceTempView("venture3")
 
-      //压力支撑数据
+      //压力支撑数据rd_count_df
       val ps2_df = ps_df.where(s"trade_time='$yes_day'")
+      println("========================================================================================ps2_df")
 //      ps2_df.show()
       ps2_df.createOrReplaceTempView("ps")
 
@@ -178,7 +180,8 @@ object SparkAnalysisZtb {
           group by `股票代码`,`股票简称`,max_date
            """.stripMargin).orderBy("zdf")
       println("========================================================================================ztb_xj_df")
-//      ztb_xj_df.show(10,false)
+//      ztb_xj_df.show(1000,false)
+//      println(ztb_xj_df.count())
       ztb_xj_df.createOrReplaceTempView("ztb_xj")
 
 
@@ -189,6 +192,7 @@ object SparkAnalysisZtb {
           |""".stripMargin)
       println("========================================================================================ztb_shuffer_df")
 //      ztb_shuffer_df.show(10,false)
+//      println(ztb_shuffer_df.count())
       ztb_shuffer_df.createOrReplaceTempView("ztb_shuffer")   //涨停板洗过的票，涨跌幅低于涨停板6.28黄金分割位
 
       //基础数据对涨停板以及压力支撑位进行过滤
@@ -197,7 +201,9 @@ object SparkAnalysisZtb {
           |select * from basequery as b left join ztb_shuffer as z on b.`代码`=z.`股票代码`
           |where `股票代码` is not null
           |""".stripMargin)
+      println("========================================================================================base_filter_ps_df")
 //      base_filter_ps_df.show(1000,false)
+//      println(base_filter_ps_df.count())
       base_filter_ps_df.createOrReplaceTempView("bqps")
 
       // 关联风险表集合
@@ -210,8 +216,9 @@ object SparkAnalysisZtb {
              order by size(fxlxs)
            """.stripMargin)
       println("========================================================================================risk2_df")
+//      risk2_df.show(1000,false)
       risk2_df.createOrReplaceTempView("r2")
-//      risk2_df.show(10,false)
+
 
       val rd_count_df = spark.sql(
         s"""
@@ -220,12 +227,13 @@ object SparkAnalysisZtb {
           |group by `股票代码` order by count(1)
           |""".stripMargin)
       println("========================================================================================rd_count_df")
-      rd_count_df.createOrReplaceTempView("rcd")
 //      rd_count_df.show(10,false)
+      rd_count_df.createOrReplaceTempView("rcd")
+
 
       //过滤公告中的风险股票 时间限制在选股前一天和选股当天
       val notice_df = spark.read.parquet("file:///D:\\gsdata\\analysis_notices")
-        .where(s"time between '$yes_day' and '$setdate'")
+        .where(s"time between '$yes_day_5' and '$setdate'")
       notice_df.createOrReplaceTempView("notices")
 
       //公告利空数据集
@@ -249,7 +257,7 @@ object SparkAnalysisZtb {
           |
           |""".stripMargin)
       println("========================================================================================notice_lh_df")
-      //      notice_lh_df.show()
+//      notice_lh_df.show()
       notice_lh_df.createOrReplaceTempView("lh")
 
       /**
@@ -261,7 +269,7 @@ object SparkAnalysisZtb {
       //
       //   and support_ratio<140
 
-      println("========================================================================================result_df")
+
       val result_df = spark.sql(
         s"""
           |select r2.*,'${setdate}' as buy_date,rcd.rd_count,nr.fxdx,lh.fxdx_lh,
@@ -280,21 +288,40 @@ object SparkAnalysisZtb {
           |order by sx,fxdx_lk,s
           |""".stripMargin).drop("股票代码","股票简称")
 
-      result_df.where(
-        """
-          |rd_count is not null
-          |and `连续涨停天数`<=1
-          |and sx=1 and fxdx_lk = 1 and s=1
-          |""".stripMargin).show(1000,false)
+      println("========================================================================================result_df基础数据")
+//      result_df.show(1000,false)
+
+      var rd_count =""
+      //热度2020-06-30以前没有此参数
+      if(setdate>"2020-06-30"){
+        rd_count = "rd_count is not null and"
+      }
+//      println(rd_count)
+
+      println("========================================================================================result_df筛选数据")
+      //and sx=1
+      val filter_result_df = result_df.where(
+        s"""
+          |${rd_count}
+          | `连续涨停天数`<=2
+          |and not array_contains(levels,5)
+          |and fxdx_lk = 1
+          |and s=1
+          |""".stripMargin)
+
+      filter_result_df.orderBy("zdf")
+//        .where("support_ratio*pressure_ratio<150*90")
+        .show(1000,false)
 
 
       val g8d_df = result_df
           .where(
-            """rd_count is not null
-              |and t1_zgzf>=8
+            s"""
+              |${rd_count}
+              |t1_zgzf>=9.5
               |and `连续涨停天数`<=1
               |and sx=1 and fxdx_lk = 1 and s=1""".stripMargin)
-        .select("代码","trade_time","buy_date","channel_position","support_ratio","pressure_ratio","sx","fxdx_lk","s","zdf","t1_sfzt","t1_cjzt","t1_kpzf","t1_zgzf","t1_spzf","t2_kpzf","t2_zgzf","t2_spzf")
+        .select("代码","trade_time","buy_date","high_low_pressure","high_low_support","channel_position","support_ratio","pressure_ratio","sx","fxdx_lk","s","zdf","t1_sfzt","t1_cjzt","t1_kpzf","t1_zgzf","t1_zdzf","t1_spzf","t1_qjzf","t1_stzf","t2_kpzf","t2_zgzf","t2_zdzf","t2_spzf","t2_qjzf","t2_stzf")
 
       g8d_df.show()
 

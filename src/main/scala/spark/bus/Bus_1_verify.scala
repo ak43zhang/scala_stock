@@ -8,6 +8,7 @@ import org.apache.spark.SparkConf
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.storage.StorageLevel
 
+
 /**
  * 总线1
  * 排查各数据集缺失数据时间周期，用于验证数据完整性
@@ -53,88 +54,112 @@ object Bus_1_verify {
     println(now_day)
 
     //验证gpsj_day_all_hs数据完整性
-//    println("==============验证gpsj_day_all_hs数据完整性==============")
-//    spark.sql(
-//      s"""
-//        |select * from data_jyrl as t1 left join gpsj_day_all_hs as t2 on t1.trade_date=t2.trade_date
-//        |where t2.trade_date is null and trade_status=1 and t1.trade_date like '%$year%' and t1.trade_date<='$now_day' order by t1.trade_date
-//        |""".stripMargin).show()
-//
-//    println("==============验证gpsj_hs_10days/gpsj_hs_h10days/gpsj_hs_20days数据完整性==============")
-//    spark.sql(
-//      s"""
-//         |select * from data_jyrl as t1 left join gpsj_hs_10days as t2 on t1.trade_date=t2.t0_trade_date
-//         |where t2.t0_trade_date is null and trade_status=1 and t1.trade_date like '%$year%' and t1.trade_date<='$now_day' order by t1.trade_date
-//         |""".stripMargin).show()
-//    spark.sql(
-//      s"""
-//         |select * from data_jyrl as t1 left join gpsj_hs_h10days as t2 on t1.trade_date=t2.t0_trade_date
-//         |where t2.t0_trade_date is null and trade_status=1 and t1.trade_date like '%$year%' and t1.trade_date<='$now_day' order by t1.trade_date
-//         |""".stripMargin).show()
-//    spark.sql(
-//      s"""
-//         |select * from data_jyrl as t1 left join gpsj_hs_20days as t2 on t1.trade_date=t2.t0_trade_date
-//         |where t2.t0_trade_date is null and trade_status=1 and t1.trade_date like '%$year%' and t1.trade_date<='$now_day' order by t1.trade_date
-//         |""".stripMargin).show()
-//
-//    //验证涨停板数据完整性
-//    println("==============验证涨停板数据完整性==============")
-//    spark.sql(
-//      s"""
-//         |select * from data_jyrl as t1 left join ztb_day as t2 on t1.trade_date=t2.trade_date
-//         |where t2.trade_date is null and trade_status=1 and t1.trade_date like '%$year%' and t1.trade_date<='$now_day' order by t1.trade_date
-//         |""".stripMargin).show()
-//
-//    //验证龙虎榜每日更新数据完整性
-//    println("==============验证龙虎榜每日更新数据完整性==============")
-//    spark.sql(
-//      s"""
-//         |select * from data_jyrl as t1 left join data_lhb as t2 on t1.trade_date=t2.trade_date
-//         |where t2.trade_date is null and trade_status=1 and t1.trade_date like '%$year%' and t1.trade_date<='$now_day' order by t1.trade_date
-//         |""".stripMargin).show()
-//
-//    //验证龙虎榜个股数据完整新
-//    println("==============验证龙虎榜个股数据完整性==============")
-//    spark.sql(
-//      s"""
-//         |select * from data_jyrl as t1 left join data_lhb_history2 as t2 on t1.trade_date=t2.trade_date
-//         |where t2.trade_date is null and trade_status=1 and t1.trade_date like '%$year%' and t1.trade_date<='$now_day' order by t1.trade_date
-//         |""".stripMargin).show()
-//
-//    //验证股市日历每日更新数据完整性
-//    println("==============验证股市日历每日更新数据完整性==============")
-//    spark.sql(
-//      s"""
-//         |select * from data_jyrl as t1 left join data_gsdt as t2 on t1.trade_date=t2.trade_date
-//         |where t2.trade_date is null and trade_status=1 and t1.trade_date like '%$year%' and t1.trade_date<='$now_day' order by t1.trade_date
-//         |""".stripMargin).show()
-//
-//    //验证压力支撑数据完整性
-//    println("==============验证压力支撑数据完整性==============")
-//    spark.sql(
-//      s"""
-//         |select * from data_jyrl as t1 left join pressure_support_calculator$year as t2 on t1.trade_date=t2.trade_date
-//         |where t2.trade_date is null and trade_status=1 and t1.trade_date like '%$year%' and t1.trade_date<='$now_day' order by t1.trade_date
-//         |""".stripMargin).show()
-//
-//    //风险数据完整性验证 TODO
+    println("==============验证gpsj_day_all_hs数据完整性==============")
+    spark.sql(
+      s"""
+        |select * from data_jyrl as t1 left join gpsj_day_all_hs as t2 on t1.trade_date=t2.trade_date
+        |where t2.trade_date is null and trade_status=1 and t1.trade_date like '%$year%' and t1.trade_date<='$now_day' order by t1.trade_date
+        |""".stripMargin).show()
+
+    println("==============验证gpsj_hs_10days/gpsj_hs_h10days/gpsj_hs_20days数据完整性==============")
+    spark.sql(
+      s"""
+         |select * from data_jyrl as t1 left join gpsj_hs_10days as t2 on t1.trade_date=t2.t0_trade_date
+         |where t2.t0_trade_date is null and trade_status=1 and t1.trade_date like '%$year%' and t1.trade_date<='$now_day' order by t1.trade_date
+         |""".stripMargin).show()
+    spark.sql(
+      s"""
+         |select * from data_jyrl as t1 left join gpsj_hs_h10days as t2 on t1.trade_date=t2.t0_trade_date
+         |where t2.t0_trade_date is null and trade_status=1 and t1.trade_date like '%$year%' and t1.trade_date<='$now_day' order by t1.trade_date
+         |""".stripMargin).show()
+    spark.sql(
+      s"""
+         |select * from data_jyrl as t1 left join gpsj_hs_20days as t2 on t1.trade_date=t2.t0_trade_date
+         |where t2.t0_trade_date is null and trade_status=1 and t1.trade_date like '%$year%' and t1.trade_date<='$now_day' order by t1.trade_date
+         |""".stripMargin).show()
+
+    //验证涨停板数据完整性
+    println("==============验证涨停板数据完整性==============")
+    spark.sql(
+      s"""
+         |select * from data_jyrl as t1 left join ztb_day as t2 on t1.trade_date=t2.trade_date
+         |where t2.trade_date is null and trade_status=1 and t1.trade_date like '%$year%' and t1.trade_date<='$now_day' order by t1.trade_date
+         |""".stripMargin).show()
+
+    //验证龙虎榜每日更新数据完整性
+    println("==============验证龙虎榜每日更新数据完整性==============")
+    spark.sql(
+      s"""
+         |select * from data_jyrl as t1 left join data_lhb as t2 on t1.trade_date=t2.trade_date
+         |where t2.trade_date is null and trade_status=1 and t1.trade_date like '%$year%' and t1.trade_date<='$now_day' order by t1.trade_date
+         |""".stripMargin).show()
+
+    //TODO popularity_day 热度数据完整性验证
+
+    //验证龙虎榜个股数据完整新
+    println("==============验证龙虎榜个股数据完整性==============")
+    spark.sql(
+      s"""
+         |select * from data_jyrl as t1 left join data_lhb_history2 as t2 on t1.trade_date=t2.trade_date
+         |where t2.trade_date is null and trade_status=1 and t1.trade_date like '%$year%' and t1.trade_date<='$now_day' order by t1.trade_date
+         |""".stripMargin).show()
+
+    //验证股市日历每日更新数据完整性
+    println("==============验证股市日历每日更新数据完整性==============")
+    spark.sql(
+      s"""
+         |select * from data_jyrl as t1 left join data_gsdt as t2 on t1.trade_date=t2.trade_date
+         |where t2.trade_date is null and trade_status=1 and t1.trade_date like '%$year%' and t1.trade_date<='$now_day' order by t1.trade_date
+         |""".stripMargin).show()
+
+    //验证压力支撑数据完整性
+    println("==============验证压力支撑数据完整性（动态）==============")
+    spark.sql(
+      s"""
+         |select * from data_jyrl as t1 left join pressure_support_calculator$year as t2 on t1.trade_date=t2.trade_date
+         |where t2.trade_date is null and trade_status=1 and t1.trade_date like '%$year%' and t1.trade_date<='$now_day' order by t1.trade_date
+         |""".stripMargin).show()
+
+    println("==============验证压力支撑数据完整性（固定40周期）==============")
+    spark.sql(
+      s"""
+         |select * from data_jyrl as t1 left join pressure_support_calculatorfor40_$year as t2 on t1.trade_date=t2.trade_date
+         |where t2.trade_date is null and trade_status=1 and t1.trade_date like '%$year%' and t1.trade_date<='$now_day' order by t1.trade_date
+         |""".stripMargin).show()
+
+    //风险数据完整性验证 TODO
 //    println("==============风险数据完整性验证==============")
-////    spark.sql("")
+//    spark.sql("")
 
     //财联社分析数据验证 多少分析完，多少未分析完
     println("==============财联社分析数据验证==============")
     spark.sql("select sj,count(1) as zs,sum(if(analysis=1,1,0)) as t,sum(if(analysis=1,0,1)) as f  from (select substring(`发布时间`,1,10) as sj,analysis from news_cls) group by sj order by sj desc")
-      .where("f!=0").show()
+      .where("f!=0")
+      .show()
 
     //combine分析数据验证 多少分析完，多少未分析完
     println("==============combine分析数据验证==============")
     spark.sql("select sj,count(1) as zs,sum(if(analysis=1,1,0)) as t,sum(if(analysis=1,0,1)) as f  from (select substring(`发布时间`,1,10) as sj,analysis from news_combine) group by sj order by sj desc")
-      .where("f!=0").show()
-
+      .where("f!=0")
+      .show()
+        
     //financial分析数据验证 多少分析完，多少未分析完
     println("==============financial分析数据验证==============")
     spark.sql("select sj,count(1) as zs,sum(if(analysis=1,1,0)) as t,sum(if(analysis=1,0,1)) as f  from (select substring(`时间`,1,10) as sj,analysis from news_financial) group by sj order by sj desc")
-      .where("f!=0").show()
+      .where("f!=0")
+      .show()
+
+    //jhsaggg分析数据验证 多少分析完，多少未分析完
+    println("==============jhsaggg分析数据验证==============")
+    spark.sql("select sj,count(1) as zs,sum(if(analysis=1,1,0)) as t,sum(if(analysis=1,0,1)) as f  from (select substring(`公告日期`,1,10) as sj,analysis from jhsaggg) group by sj order by sj desc")
+      .where("f!=0")
+      .show()
+
+    //涨停板分析数据验证 多少分析完，多少未分析完
+    println("==============涨停板分析数据验证==============")
+    spark.sql("select sj,count(1) as zs,sum(if(analysis=1,1,0)) as t,sum(if(analysis=1,0,1)) as f  from (select substring(`trade_date`,1,10) as sj,analysis from ztb_day) group by sj order by sj desc")
+      .where("f!=0")
+      .show()
 
 
     val endm = System.currentTimeMillis()
@@ -148,7 +173,7 @@ object Bus_1_verify {
     jyrldf.createOrReplaceTempView("data_jyrl")
 
     val ztbdf: DataFrame = spark.read.jdbc(url, s"ztb_day", properties)
-        .select("trade_date").distinct()
+        .select("trade_date","`股票代码`","analysis").distinct()
     ztbdf.persist(StorageLevel.MEMORY_AND_DISK_SER)
     ztbdf.createOrReplaceTempView("ztb_day")
 
@@ -179,6 +204,21 @@ object Bus_1_verify {
     news_financial_df.persist(StorageLevel.MEMORY_AND_DISK_SER)
     news_financial_df.createOrReplaceTempView("news_financial")
 
+    val jhsaggg_df: DataFrame = spark.read.jdbc(url, "jhsaggg2015", properties)
+      .union(spark.read.jdbc(url, "jhsaggg2016", properties))
+      .union(spark.read.jdbc(url, "jhsaggg2017", properties))
+      .union(spark.read.jdbc(url, "jhsaggg2018", properties))
+      .union(spark.read.jdbc(url, "jhsaggg2019", properties))
+      .union(spark.read.jdbc(url, "jhsaggg2020", properties))
+      .union(spark.read.jdbc(url, "jhsaggg2021", properties))
+      .union(spark.read.jdbc(url, "jhsaggg2022", properties))
+      .union(spark.read.jdbc(url, "jhsaggg2023", properties))
+      .union(spark.read.jdbc(url, "jhsaggg2024", properties))
+      .union(spark.read.jdbc(url, "jhsaggg2025", properties))
+
+    jhsaggg_df.persist(StorageLevel.MEMORY_AND_DISK_SER)
+    jhsaggg_df.createOrReplaceTempView("jhsaggg")
+
     spark.read.parquet(s"file:///D:\\gsdata\\gpsj_day_all_hs\\trade_date_month=202*")
     .select("trade_date").distinct()
     .createOrReplaceTempView("gpsj_day_all_hs")
@@ -197,6 +237,9 @@ object Bus_1_verify {
 
     val stockDF  = spark.read.jdbc(url, s"pressure_support_calculator$year", properties)
     stockDF.createOrReplaceTempView(s"pressure_support_calculator$year")
+
+    val stock40DF  = spark.read.jdbc(url, s"pressure_support_calculatorfor40_$year", properties)
+    stock40DF.createOrReplaceTempView(s"pressure_support_calculatorfor40_$year")
   }
 
 
