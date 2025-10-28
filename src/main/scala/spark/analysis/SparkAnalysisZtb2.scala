@@ -59,8 +59,8 @@ object SparkAnalysisZtb2 {
     properties.setProperty("url", url)
     properties.setProperty("driver", driver)
 
-    val start_time = "2025-10-15"
-    val end_time ="2025-10-15"
+    val start_time = "2025-10-27"
+    val end_time ="2025-10-27"
 
     //涨停板dataframe
     val ztb_df: DataFrame = spark.read.jdbc(url, "ztb_day", properties)
@@ -294,7 +294,8 @@ object SparkAnalysisZtb2 {
         .drop("股票代码","股票简称")
 
       println("========================================================================================result_df基础数据")
-      result_df.show(1000,false)
+      result_df
+        .show(3000,false)
 
 
 //      println(rd_count)

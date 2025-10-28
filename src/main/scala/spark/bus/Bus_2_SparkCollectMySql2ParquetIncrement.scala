@@ -41,7 +41,7 @@ object Bus_2_SparkCollectMySql2ParquetIncrement {
 
 //    val jyrlsAll = ArrayBuffer("data2024_gpsj_day_1219")
     val jyrlsSome = ArrayBuffer(
-      "data_gpsj_day_20251014"
+      "data_gpsj_day_20251027"
     )
 
     /**

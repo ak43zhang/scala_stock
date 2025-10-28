@@ -147,10 +147,10 @@ object Bus_4_PressureSupportCalculator {
 
     spark.sparkContext.setLogLevel("ERROR")//[18,19]
 
-    val start_time ="2025-10-14"
-    val end_time ="2025-10-14"
+    val start_time ="2025-10-27"
+    val end_time ="2025-10-27"
 
-    val inputPath = "file:///D:\\gsdata\\gpsj_day_all_hs\\trade_date_month=20[14,15,16,17,18,19,20,21,22,23,24,25]*"
+    val inputPath = "file:///D:\\gsdata\\gpsj_day_all_hs\\trade_date_month=20[24,25]*" //14,15,16,17,18,19,20,21,22,23,
     val outputPath = "file:///D:\\gsdata\\pressure_support_calculator"
 
     // 注册自定义Kryo序列化（生产环境需要实现Registrator）

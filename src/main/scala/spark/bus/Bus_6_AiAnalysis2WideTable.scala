@@ -14,8 +14,8 @@ import org.apache.spark.sql.{DataFrame, SparkSession}
  */
 object Bus_6_AiAnalysis2WideTable {
 
-  val start_time = "2025-10-10"
-  val end_time = "2025-10-15"
+  val start_time = "2025-10-21"
+  val end_time = "2025-10-28"
 
   def main(args: Array[String]): Unit = {
     val conf = new SparkConf()
