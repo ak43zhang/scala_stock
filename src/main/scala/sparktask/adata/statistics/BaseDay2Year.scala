@@ -72,7 +72,7 @@ object BaseDay2Year {
       try {
         // 通过 Spark 执行 SQL 删除语句
         val deleteQuery = s"DELETE FROM ${output_table} WHERE trade_date='$jyrl'"
-        MysqlTools.mysqlEx(output_table, deleteQuery)
+        MysqlTools.mysqlEx(deleteQuery)
         //        println("数据删除成功！")
       } catch {
         case e: Exception => println(s"数据删除失败: ${e.getMessage}")

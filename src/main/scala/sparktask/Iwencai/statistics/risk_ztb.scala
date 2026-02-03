@@ -130,7 +130,7 @@ object risk_ztb {
       try {
         // 通过 Spark 执行 SQL 删除语句
         val deleteQuery = s"DELETE FROM ztb_risk_filter WHERE trade_date like '$year-%'"
-        MysqlTools.mysqlEx("ztb_risk_filter", deleteQuery)
+        MysqlTools.mysqlEx(deleteQuery)
         println("数据删除成功！")
       } catch {
         case e: Exception => println(s"数据删除失败: ${e.getMessage}")

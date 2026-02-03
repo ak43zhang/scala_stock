@@ -79,7 +79,7 @@ object RiskConvert {
       try {
         // 通过 Spark 执行 SQL 删除语句
         val deleteQuery = s"DELETE FROM $output_table_name WHERE `风险类型` in ('立案调查','分红派息','监管日期','流动性风险_换手','流动性风险_换手2','融资余额风险') and trade_date='$setday'"
-        MysqlTools.mysqlEx(output_table_name, deleteQuery)
+        MysqlTools.mysqlEx(deleteQuery)
 //        println("数据删除成功！")
       } catch {
         case e: Exception => println(s"数据删除失败: ${e.getMessage}")

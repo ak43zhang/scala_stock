@@ -43,16 +43,7 @@ object IndexAnalysis4Bidding {
     properties.setProperty("url", url)
     properties.setProperty("driver", driver)
 
-    val progressListener = new GlobalProgressListener
-    spark.sparkContext.addSparkListener(progressListener)
 
-    // 启动进度条线程
-    ProgressBar.show(progressListener)
-
-
-
-    // 等待所有任务完成
-    progressListener.awaitCompletion()
     val endm = System.currentTimeMillis()
     println("共耗时：" + (endm - startm) / 1000 + "秒")
     spark.close()

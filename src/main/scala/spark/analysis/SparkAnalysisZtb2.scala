@@ -6,6 +6,7 @@ import org.apache.spark.SparkConf
 import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.storage.StorageLevel
+import spark.ParameterSet
 import sparktask.tools.MysqlTools
 
 import scala.collection.mutable.ArrayBuffer
@@ -84,13 +85,13 @@ object SparkAnalysisZtb2 {
       "t1_close","t1_sfzt","t1_cjzt","t1_kxzt","t1_ln","t1_zrlnb","t1_qjzf","t1_stzf","t1_kpzf","t1_zgzf","t1_zdzf","t1_spzf",
       "t2_close","t2_sfzt","t2_cjzt","t2_kxzt","t2_ln","t2_zrlnb","t2_qjzf","t2_stzf","t2_kpzf","t2_zgzf","t2_zdzf","t2_spzf"
     )
-    val data20_df = spark.read.parquet("file:///D:\\gsdata\\gpsj_hs_10days\\trade_date_month=20[24,25]*") //15,16,17,18,19,20,21,22,23,
+    val data20_df = spark.read.parquet(s"file:///D:\\${ParameterSet.data_content}\\gpsj_hs_10days\\trade_date_month=20[24,25]*") //15,16,17,18,19,20,21,22,23,
       .select(columnsList.map(col): _*)
     data20_df.persist(StorageLevel.MEMORY_AND_DISK_SER)
     data20_df.createOrReplaceTempView("data20_df")
 
     //压力支撑数据[统一使用40日周期压力支撑位]
-    val ps_df = spark.read.parquet("file:///D:\\gsdata\\pressure_support_calculator\\valid_results_pressure_advanced_dip_strategy40")
+    val ps_df = spark.read.parquet(s"file:///D:\\${ParameterSet.data_content}\\pressure_support_calculator\\valid_results_pressure_advanced_dip_strategy40")
       .select("stock_code","trade_time","windowSize","pivot_pressure","pivot_support","high_low_pressure","high_low_support","channel_position","support_ratio","pressure_ratio")
 //            .where(s"trade_time between '$start_time' and '$end_time'")
     ps_df.persist(StorageLevel.MEMORY_AND_DISK_SER)
@@ -232,7 +233,7 @@ object SparkAnalysisZtb2 {
 
 
       //过滤公告中的风险股票 时间限制在选股前一天和选股当天
-      val notice_df = spark.read.parquet("file:///D:\\gsdata\\analysis_notices")
+      val notice_df = spark.read.parquet(s"file:///D:\\${ParameterSet.data_content}\\analysis_notices")
         .where(s"time between '$yes_day_5' and '$setdate'")
       notice_df.createOrReplaceTempView("notices")
 

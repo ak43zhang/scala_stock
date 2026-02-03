@@ -9,7 +9,10 @@ import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types.{DecimalType, IntegerType, StringType}
 import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
 import org.apache.spark.storage.StorageLevel
+import spark.ParameterSet
+import spark.bus.Bus_4_PressureSupportCalculator2for40day.getExtendedYearSuffixes
 import sparktask.tools.MysqlTools
+import spark.tools.MysqlProperties
 
 import scala.math.Ordering
 
@@ -134,32 +137,35 @@ object Bus_4_PressureSupportCalculator {
       .config("spark.local.dir", "D:\\SparkTemp")
       .getOrCreate()
 
-    val url = "jdbc:mysql://localhost:3306/gs"
-    val driver = "com.mysql.cj.jdbc.Driver"
-    val user = "root"
-    val pwd = "123456"
-
-    val properties = new Properties()
-    properties.setProperty("user", user)
-    properties.setProperty("password", pwd)
-    properties.setProperty("url", url)
-    properties.setProperty("driver", driver)
+    val properties = MysqlProperties.getMysqlProperties()
 
     spark.sparkContext.setLogLevel("ERROR")//[18,19]
 
-    val start_time ="2025-10-27"
-    val end_time ="2025-10-27"
+    val start_time ="2025-12-17"
+    val end_time ="2025-12-18"
 
-    val inputPath = "file:///D:\\gsdata\\gpsj_day_all_hs\\trade_date_month=20[24,25]*" //14,15,16,17,18,19,20,21,22,23,
-    val outputPath = "file:///D:\\gsdata\\pressure_support_calculator"
+    psc(spark,properties,start_time,end_time)
+
+    val endm = System.currentTimeMillis()
+    println("共耗时：" + (endm - startm) / 1000 + "秒")
+    spark.close()
+  }
+
+  def psc(spark:SparkSession,properties:Properties,start_time:String,end_time:String): Unit ={
+    val url = properties.getProperty("url")
+
+    val years = getExtendedYearSuffixes(start_time, end_time)
+
+    val inputPath = s"file:///D:\\${ParameterSet.data_content}\\gpsj_day_all_hs\\trade_date_month=20[$years]*" //14,15,16,17,18,
+    val outputPath = s"file:///D:\\${ParameterSet.data_content}\\pressure_support_calculator"
 
     // 注册自定义Kryo序列化（生产环境需要实现Registrator）
     spark.sparkContext.getConf.registerKryoClasses(Array(classOf[RawData], classOf[EnhancedData], classOf[ResultData]))
 
     var df: DataFrame = spark.read.jdbc(url, "data_jyrl", properties)
-    df.createTempView("data_jyrl")
-          val dayList = spark.sql(s"select trade_date from data_jyrl where  trade_date between '$start_time' and '$end_time' and trade_status='1' order by trade_date desc").collect().map(f=>f.getAs[String]("trade_date"))
-//    val dayList = spark.sql("select trade_date from data_jyrl where  trade_date between '2019-01-01' and '2019-07-19' and trade_status='1' order by trade_date desc").collect().map(f => f.getAs[String]("trade_date"))
+    df.createOrReplaceTempView("data_jyrl")
+    val dayList = spark.sql(s"select trade_date from data_jyrl where  trade_date between '$start_time' and '$end_time' and trade_status='1' order by trade_date desc").collect().map(f=>f.getAs[String]("trade_date"))
+    //    val dayList = spark.sql("select trade_date from data_jyrl where  trade_date between '2019-01-01' and '2019-07-19' and trade_status='1' order by trade_date desc").collect().map(f => f.getAs[String]("trade_date"))
 
     val indf = spark.read.parquet(inputPath).persist(StorageLevel.MEMORY_AND_DISK_SER)
     for (day <- dayList) {
@@ -194,10 +200,6 @@ object Bus_4_PressureSupportCalculator {
       println(s"当前时间: " + new Date)
     }
     indf.unpersist()
-
-    val endm = System.currentTimeMillis()
-    println("共耗时：" + (endm - startm) / 1000 + "秒")
-    spark.close()
   }
 
   /** 数据加载与校验 */
@@ -250,7 +252,7 @@ object Bus_4_PressureSupportCalculator {
     import spark.implicits._
 
     // 参数候选范围（生产环境可配置化）
-    val windowCandidates = (10 to 40 by 5).toArray
+    val windowCandidates = (10 to 120 by 5).toArray
 
     // 注册累加器用于异常监控
     val errorAccumulator = spark.sparkContext.collectionAccumulator[String]("calculationErrors")
@@ -475,16 +477,6 @@ object Bus_4_PressureSupportCalculator {
 
   /** 结果校验与存储 */
   private def validateAndSaveResults(tablename:String, rawDS: Dataset[RawData], resultDS: Dataset[ResultData], day: String, url: String, properties: Properties, path: String): Unit = {
-    // 数据校验
-    //    val badRecords = resultDS.filter(row =>
-    //      row.ma_pressure < row.ma_support || // 压力位应大于支撑位
-    //        row.high_low_pressure < row.high_low_support
-    //    ).cache()
-    //
-    //    if (!badRecords.isEmpty) {
-    //      badRecords.write.mode("overwrite").parquet(s"$path/invalid_records")
-    //      throw new IllegalStateException(s"发现${badRecords.count()}条异常记录，已保存到$path/invalid_records")
-    //    }
 
     // 基础数据与结果数据合并
     // 找出两个表中都存在的列
@@ -499,22 +491,13 @@ object Bus_4_PressureSupportCalculator {
       // 通过 Spark 执行 SQL 删除语句
       // 编写 SQL 删除语句
       val deleteQuery = s"DELETE FROM $tablename WHERE trade_date='$day'"
-      MysqlTools.mysqlEx(tablename, deleteQuery)
+      MysqlTools.mysqlEx(deleteQuery)
       println("数据删除成功！")
     } catch {
       case e: Exception => println(s"数据删除失败: ${e.getMessage}")
     }
 
     joinedDF.where(s"trade_date='$day'").write.mode("append").jdbc(url, tablename, properties)
-    //        joinedDF.write
-    //          .mode("overwrite")
-    //          .option("compression", "snappy")
-    //          .parquet(s"$outputPath/valid_results_finaldata")
 
-    // 正常数据存储
-    //    ds.write
-    //      .mode("overwrite")
-    //      .option("compression", "snappy")
-    //      .parquet(s"$path/valid_results")
   }
 }

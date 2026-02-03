@@ -6,6 +6,7 @@ import org.apache.spark.SparkConf
 import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.storage.StorageLevel
+import spark.ParameterSet
 import sparktask.tools.MysqlTools
 
 import scala.collection.mutable.ArrayBuffer
@@ -29,7 +30,8 @@ import scala.collection.mutable.ArrayBuffer
  * 通达信风险数据                                   data_risk_tdx（mysql）                                         data_risk_tdx
  * 风险数据评分                                     metadata_risk_level（mysql）                                   mrl
  * 10日数据集                                      gpsj_hs_10days（parquet）                                      data10_df
- * 压力支撑数据[统一使用40日周期压力支撑位]             valid_results_pressure_advanced_dip_strategy40（parquet）       ps
+ * 压力支撑数据[统一使用40日周期压力支撑位]             valid_results_pressure_advanced_dip_strategy40（parquet）       ps40
+ * 压力支撑数据[统一使用120日周期压力支撑位]             valid_results_pressure_advanced_dip_strategy120（parquet）       ps120
  * 交易日历                                        data_jyrl（mysql）                                             data_jyrl
  * 基础查询数据                                     wencaiquery_basequery_$year（mysql）                           basequery
  * 风险数据                                        wencaiquery_venture_$year（mysql）                             venture
@@ -72,10 +74,11 @@ object SparkAnalysisZtb {
     properties.setProperty("password", pwd)
     properties.setProperty("url", url)
     properties.setProperty("driver", driver)
+
     val startm = System.currentTimeMillis()
 
-    val start_time = "2025-01-01"
-    val end_time ="2025-10-27"
+    val start_time = "2025-10-30"
+    val end_time ="2025-10-30"
 
     //涨停板dataframe
     val ztb_df: DataFrame = spark.read.jdbc(url, "ztb_day", properties)
@@ -100,13 +103,13 @@ object SparkAnalysisZtb {
       "t2_close","t2_sfzt","t2_cjzt","t2_kxzt","t2_ln","t2_zrlnb","t2_qjzf","t2_stzf","t2_kpzf","t2_zgzf","t2_zdzf","t2_spzf"
 //      "t3_close","t3_sfzt","t3_cjzt","t3_kxzt","t3_ln","t3_zrlnb","t3_qjzf","t3_stzf","t3_kpzf","t3_zgzf","t3_zdzf","t3_spzf"
     )//"t3_sfzt","t3_cjzt","t3_kxzt","t3_ln","t3_zrlnb","t3_qjzf","t3_stzf","t3_kpzf","t3_zgzf","t3_zdzf","t3_spzf"
-    val data10_df = spark.read.parquet("file:///D:\\gsdata\\gpsj_hs_10days\\trade_date_month=20[23,24,25]*")//15,16,17,18,19,20,21,22,
+    val data10_df = spark.read.parquet(s"file:///D:\\${ParameterSet.data_content}\\gpsj_hs_10days\\trade_date_month=20[23,24,25]*")//15,16,17,18,19,20,21,22,
       .select(columnsList.map(col): _*)
     data10_df.persist(StorageLevel.MEMORY_AND_DISK_SER)
     data10_df.createOrReplaceTempView("data10_df")
 
     //压力支撑数据[统一使用40日周期压力支撑位]
-    val ps_df = spark.read.parquet("file:///D:\\gsdata\\pressure_support_calculator\\valid_results_pressure_advanced_dip_strategy40")
+    val ps_df = spark.read.parquet(s"file:///D:\\${ParameterSet.data_content}\\pressure_support_calculator\\valid_results_pressure_advanced_dip_strategy40")
       .select("stock_code","trade_time","windowSize","pivot_pressure","pivot_support","high_low_pressure","high_low_support","channel_position","support_ratio","pressure_ratio")
 //            .where(s"trade_time between '$start_time' and '$end_time'")
     ps_df.persist(StorageLevel.MEMORY_AND_DISK_SER)
@@ -128,7 +131,6 @@ object SparkAnalysisZtb {
       val yes_day = date_list.toList(0)
       val yes_day_5 = date_list.toList(5)
       val n_day_ago = date_list.toList(20)
-      val day_40_ago = date_list.toList(40)
 //      println(n_day_ago)
       val year = setdate.substring(0,4)
       println(s"==========================设置时间为${setdate},则处理的是${setdate}的股票，分析股票则用上一交易日：${yes_day}============================")
@@ -250,7 +252,7 @@ object SparkAnalysisZtb {
 
 
       //过滤公告中的风险股票 时间限制在选股前一天和选股当天
-      val notice_df = spark.read.parquet("file:///D:\\gsdata\\analysis_notices")
+      val notice_df = spark.read.parquet(s"file:///D:\\${ParameterSet.data_content}\\analysis_notices")
         .where(s"time between '$yes_day_5' and '$setdate'")
       notice_df.createOrReplaceTempView("notices")
 
@@ -258,12 +260,12 @@ object SparkAnalysisZtb {
       val notice_lk_df = spark.sql(
         """
           |select `股票代码`,collect_list(`风险大小`) as fxdx_lk from notices
-          |where `消息类型` = '利空'
+          |where `消息类型` = '利空' and `风险大小` in ('重大','大')
           |group by `股票代码`
           |
           |""".stripMargin)
       println("========================================================================================notice_lk_df")
-//      notice_lk_df.show()
+//      notice_lk_df.show(2000)
       notice_lk_df.createOrReplaceTempView("lk")
 
       //公告利好数据集
@@ -293,7 +295,7 @@ object SparkAnalysisZtb {
           |select r2.*,'${setdate}' as buy_date,rcd.rd_count,lk.fxdx_lk,lh.fxdx_lh,
           |if(not array_contains(levels,5)  and (total_score<=10 or total_score is null),1,0) as sx,
           |if(fxdx_lk is null,1,0) as is_fxdx_lk,
-          |if(fxdx_lh is null,1,0) as is_fxdx_lh,
+          |if(fxdx_lh is not null,1,0) as is_fxdx_lh,
           |if(support_ratio<163,1,0) as s,
           |data10_df.*,
           |ztb.`连续涨停天数`
@@ -307,7 +309,7 @@ object SparkAnalysisZtb {
           |""".stripMargin).drop("股票代码","股票简称")
 
       println("========================================================================================result_df基础数据")
-//      result_df.show(1000,false)
+//      result_df.show(2000,false)
 
       var rd_count =""
       //热度2020-06-30以前没有此参数
@@ -327,10 +329,10 @@ object SparkAnalysisZtb {
           |and s=1
           |""".stripMargin)
 
-      filter_result_df.orderBy("zdf")
+//      filter_result_df.orderBy("zdf").show(1000,false)
 //        .where("support_ratio*pressure_ratio<150*90")
 //        .where("`代码`='000753'")
-        .show(1000,false)
+
 
       println("========================================================================================g8d_df筛选数据")
 
@@ -338,7 +340,7 @@ object SparkAnalysisZtb {
           .where(
             s"""
               |${rd_count}
-              |t1_zgzf>=9.5
+              |t1_zgzf>=9.8
               |and `连续涨停天数`<=1
               |and sx=1
               |and is_fxdx_lk = 1
@@ -354,7 +356,7 @@ object SparkAnalysisZtb {
         // 通过 Spark 执行 SQL 删除语句
         // 编写 SQL 删除语句
         val deleteQuery = s"DELETE FROM $g8_table WHERE buy_date='$setdate'"
-        MysqlTools.mysqlEx(g8_table, deleteQuery)
+        MysqlTools.mysqlEx(deleteQuery)
         println("数据删除成功！")
       } catch {
         case e: Exception => println(s"数据删除失败: ${e.getMessage}")

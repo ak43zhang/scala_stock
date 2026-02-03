@@ -1,7 +1,7 @@
 package spark.bus
 
-import java.time.format.DateTimeFormatter
-import java.time.{LocalDateTime, ZoneId}
+import java.time.format.{DateTimeFormatter, DateTimeParseException}
+import java.time.{LocalDate, LocalDateTime, ZoneId}
 import java.util.{Date, Properties}
 
 import org.apache.spark.sql.expressions.Window
@@ -9,8 +9,9 @@ import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types.{DecimalType, IntegerType, StringType}
 import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
 import org.apache.spark.storage.StorageLevel
-import sparktask.listener.{GlobalProgressListener, ProgressBar}
+import spark.ParameterSet
 import sparktask.tools.MysqlTools
+import spark.tools.MysqlProperties
 
 import scala.math.Ordering
 
@@ -126,51 +127,54 @@ object Bus_4_PressureSupportCalculator2for40day {
       .appName(this.getClass.getSimpleName)
       .master("local[*]")
       //      .config("spark.sql.parquet.compression.codec", "snappy")
-      .config("spark.sql.shuffle.partitions", "10")
-      .config("spark.driver.memory", "10g")
+      .config("spark.sql.shuffle.partitions", "12")
+      .config("spark.driver.memory", "4g")
       // 增加JDBC并行任务数
-      .config("spark.jdbc.parallelism", "10")
+      .config("spark.jdbc.parallelism", "12")
       .config("spark.local.dir", "D:\\SparkTemp")
       .getOrCreate()
 
-    val url = "jdbc:mysql://localhost:3306/gs"
-    val driver = "com.mysql.cj.jdbc.Driver"
-    val user = "root"
-    val pwd = "123456"
+    val properties = MysqlProperties.getMysqlProperties()
 
-    val properties = new Properties()
-    properties.setProperty("user", user)
-    properties.setProperty("password", pwd)
-    properties.setProperty("url", url)
-    properties.setProperty("driver", driver)
+    spark.sparkContext.setLogLevel("ERROR")//
 
-    spark.sparkContext.setLogLevel("ERROR")//[18,19]
 
-    val progressListener = new GlobalProgressListener
-    spark.sparkContext.addSparkListener(progressListener)
+//    val start_time ="2015-01-01"
+//    val end_time ="2018-01-01"
 
-    // 启动进度条线程
-    ProgressBar.show(progressListener)
+    val start_time ="2025-12-16"
+    val end_time ="2025-12-17"
 
-    val inputPath = "file:///D:\\gsdata\\gpsj_day_all_hs\\trade_date_month=20[24,25]*" //14,15,16,17,18,19,20,21,22,23,
-    val outputPath = "file:///D:\\gsdata\\pressure_support_calculator"
-    val start_time = "2025-10-27"
-    val end_time = "2025-10-27"
+    psc40(spark,properties,start_time,end_time)
 
-    // 注册自定义Kryo序列化（生产环境需要实现Registrator）
-    spark.sparkContext.getConf.registerKryoClasses(Array(classOf[RawData], classOf[EnhancedData], classOf[ResultData]))
 
-    var df: DataFrame = spark.read.jdbc(url, "data_jyrl", properties)
-    df.createTempView("data_jyrl")
+    val endm = System.currentTimeMillis()
+    println("共耗时：" + (endm - startm) / 1000 + "秒")
+    spark.close()
+  }
+
+
+
+  def psc40(spark:SparkSession,properties:Properties,start_time:String,end_time:String): Unit ={
+
+    val url = properties.getProperty("url")
+    val years = getExtendedYearSuffixes(start_time, end_time)
+
+    val inputPath = s"file:///D:\\${ParameterSet.data_content}\\gpsj_day_all_hs\\trade_date_month=20[$years]*" //14,15,16,17,18,19,20,21,22,23,
+//    val outputPath = s"file:///D:\\${ParameterSet.data_content}\\pressure_support_calculator"
+
+    val df: DataFrame = spark.read.jdbc(url, "data_jyrl", properties)
+    df.createOrReplaceTempView("data_jyrl")
     val dayList = spark.sql(s"select trade_date from data_jyrl where  trade_date between '$start_time' and '$end_time' and trade_status='1' order by trade_date desc").collect().map(f=>f.getAs[String]("trade_date"))
-//    val dayList = spark.sql("select trade_date from data_jyrl where  trade_date between '2024-01-01' and '2024-08-16' and trade_status='1' order by trade_date desc").collect().map(f => f.getAs[String]("trade_date"))
+    //    val dayList = spark.sql("select trade_date from data_jyrl where  trade_date between '2024-01-01' and '2024-08-16' and trade_status='1' order by trade_date desc").collect().map(f => f.getAs[String]("trade_date"))
 
-    val indf = spark.read.parquet(inputPath).persist(StorageLevel.MEMORY_AND_DISK_SER)
+    val indf = spark.read.parquet(inputPath)
+    indf.persist(StorageLevel.MEMORY_AND_DISK_SER)
     for (day <- dayList) {
       println(day)
       val year = day.substring(0,4)
       val tablename = s"pressure_support_calculatorfor40_$year"
-      println(tablename)
+      //      println(tablename)
       // 数据加载与校验
       val rawDS = loadAndValidateData(spark, indf, day)
         .persist(StorageLevel.MEMORY_AND_DISK_SER)
@@ -188,7 +192,7 @@ object Bus_4_PressureSupportCalculator2for40day {
         .persist(StorageLevel.MEMORY_AND_DISK_SER)
 
       // 结果校验与持久化
-      validateAndSaveResults(tablename, rawDS, resultDS, day, url, properties, outputPath)
+      validateAndSaveResults(tablename, rawDS, resultDS, day, url, properties)
 
       // 释放缓存
       rawDS.unpersist()
@@ -198,13 +202,36 @@ object Bus_4_PressureSupportCalculator2for40day {
       println(s"当前时间: " + new Date)
     }
     indf.unpersist()
+  }
 
-    // 等待所有任务完成
-    progressListener.awaitCompletion()
+  /**
+   * 核心函数：生成包含起始年-1到结束年的年份后两位拼接字符串
+   */
+  def getExtendedYearSuffixes(startDateStr: String, endDateStr: String): String = {
+    // 定义日期格式化器（匹配yyyy-MM-dd格式）
+    val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
 
-    val endm = System.currentTimeMillis()
-    println("共耗时：" + (endm - startm) / 1000 + "秒")
-    spark.close()
+    try {
+      // 解析起始和结束日期
+      val startDate = LocalDate.parse(startDateStr, formatter)
+      val endDate = LocalDate.parse(endDateStr, formatter)
+
+      // 提取完整年份
+      val startYear = startDate.getYear
+      val endYear = endDate.getYear
+
+      // 生成范围：起始年-1 到 结束年
+      val yearRange = (startYear - 1) to endYear
+
+      // 提取年份后两位并拼接成逗号分隔的字符串
+      val yearSuffixes = yearRange.map(year => year.toString.substring(2))
+      yearSuffixes.mkString(",")
+    } catch {
+      // 处理日期格式错误的情况
+      case e: DateTimeParseException =>
+        println(s"日期格式错误：${e.getMessage}")
+        ""
+    }
   }
 
   /** 数据加载与校验 */
@@ -481,17 +508,7 @@ object Bus_4_PressureSupportCalculator2for40day {
   }
 
   /** 结果校验与存储 */
-  private def validateAndSaveResults(tablename:String, rawDS: Dataset[RawData], resultDS: Dataset[ResultData], day: String, url: String, properties: Properties, path: String): Unit = {
-    // 数据校验
-    //    val badRecords = resultDS.filter(row =>
-    //      row.ma_pressure < row.ma_support || // 压力位应大于支撑位
-    //        row.high_low_pressure < row.high_low_support
-    //    ).cache()
-    //
-    //    if (!badRecords.isEmpty) {
-    //      badRecords.write.mode("overwrite").parquet(s"$path/invalid_records")
-    //      throw new IllegalStateException(s"发现${badRecords.count()}条异常记录，已保存到$path/invalid_records")
-    //    }
+  private def validateAndSaveResults(tablename:String, rawDS: Dataset[RawData], resultDS: Dataset[ResultData], day: String, url: String, properties: Properties): Unit = {
 
     // 基础数据与结果数据合并
     // 找出两个表中都存在的列
@@ -506,22 +523,13 @@ object Bus_4_PressureSupportCalculator2for40day {
       // 通过 Spark 执行 SQL 删除语句
       // 编写 SQL 删除语句
       val deleteQuery = s"DELETE FROM $tablename WHERE trade_date='$day'"
-      MysqlTools.mysqlEx(tablename, deleteQuery)
+      MysqlTools.mysqlEx(deleteQuery)
       println("数据删除成功！")
     } catch {
       case e: Exception => println(s"数据删除失败: ${e.getMessage}")
     }
 
     joinedDF.where(s"trade_date='$day'").write.mode("append").jdbc(url, tablename, properties)
-    //        joinedDF.write
-    //          .mode("overwrite")
-    //          .option("compression", "snappy")
-    //          .parquet(s"$outputPath/valid_results_finaldata")
 
-    // 正常数据存储
-    //    ds.write
-    //      .mode("overwrite")
-    //      .option("compression", "snappy")
-    //      .parquet(s"$path/valid_results")
   }
 }

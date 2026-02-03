@@ -60,7 +60,7 @@ object SparkAnalysisResultInfer {
      */
 
     val start_time ="2025-01-01"
-    val end_time ="2025-10-27"
+    val end_time ="2025-10-30"
 
     val jyrls = spark.read.jdbc(url, "data_jyrl", properties)
       .where(s"trade_status=1 and trade_date between '$start_time' and '$end_time'")
@@ -77,7 +77,6 @@ object SparkAnalysisResultInfer {
       /**
        * 参数
        *
-       *   BETWEEN '2016-01-01' and '2026-01-01'
        *    `首次涨停时间`>'09:40:00' and
        *    and support_ratio*pressure_ratio<13000
        *
@@ -92,14 +91,14 @@ object SparkAnalysisResultInfer {
           |   row_number() over(partition by buy_date order by `首次涨停时间`) as row_NUM
           |from
           |   (select * from `${table_name}`
-          |   where t1_kpzf between -4 and 4
+          |   where t1_kpzf between -3 and 3
           |   and buy_date like '%${jyrl}%'
-          |   and t0_stzf<2
+          |   and t0_stzf<3
           |   and  (t1_sfzt=1 or t1_cjzt=1)) as t1
           |   left join
           |   wencaiquery_zt_zb as t2
           |   on t1.`代码`=t2.`股票代码` and t1.buy_date=t2.trade_date
-          |where `首次涨停时间`>'09:35:00' and `首次涨停时间`<'11:30:00'
+          |where `首次涨停时间`>'09:40:00' and `首次涨停时间`<'11:30:00'
 
           |order by buy_date
           |""".stripMargin)

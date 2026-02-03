@@ -6,6 +6,8 @@ import java.util.Properties
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types._
+import spark.ParameterSet
+import spark.tools.MysqlProperties
 
 /**
  * 工业级低吸策略压力支撑位分析系统（注释增强版）
@@ -131,33 +133,33 @@ object Bus_5_AdvancedDipStrategy2for40day {
       .config("spark.serializer", "org.apache.spark.serializer.KryoSerializer")  // 高效序列化
       .getOrCreate()
 
-    val url = "jdbc:mysql://localhost:3306/gs"
-    val driver = "com.mysql.cj.jdbc.Driver"
-    val user = "root"
-    val pwd = "123456"
-
-    val properties = new Properties()
-    properties.setProperty("user", user)
-    properties.setProperty("password", pwd)
-    properties.setProperty("url", url)
-    properties.setProperty("driver", driver)
+    val properties = MysqlProperties.getMysqlProperties()
 
     spark.sparkContext.setLogLevel("ERROR")  // 屏蔽非关键日志
-    val outputPath = "file:///D:\\gsdata\\pressure_support_calculator\\valid_results_pressure_advanced_dip_strategy40"
+
+    ad40(spark,properties)
+
+    spark.stop()
+  }
+
+  def ad40(spark:SparkSession,properties: Properties): Unit ={
+    val url = properties.getProperty("url")
+    val outputPath = s"file:///D:\\${ParameterSet.data_content}\\pressure_support_calculator\\valid_results_pressure_advanced_dip_strategy40"
     import spark.implicits._
 
     // 阶段0：数据加载与清洗
     val stockDF  = spark.read.jdbc(url, "pressure_support_calculatorfor40_2015", properties)
-      .union(spark.read.jdbc(url, "pressure_support_calculatorfor40_2016", properties))
-      .union(spark.read.jdbc(url, "pressure_support_calculatorfor40_2017", properties))
-      .union(spark.read.jdbc(url, "pressure_support_calculatorfor40_2018", properties))
-      .union(spark.read.jdbc(url, "pressure_support_calculatorfor40_2019", properties))
-      .union(spark.read.jdbc(url, "pressure_support_calculatorfor40_2020", properties))
-      .union(spark.read.jdbc(url, "pressure_support_calculatorfor40_2021", properties))
-      .union(spark.read.jdbc(url, "pressure_support_calculatorfor40_2022", properties))
-      .union(spark.read.jdbc(url, "pressure_support_calculatorfor40_2023", properties))
+//      .union(spark.read.jdbc(url, "pressure_support_calculatorfor40_2016", properties))
+//      .union(spark.read.jdbc(url, "pressure_support_calculatorfor40_2017", properties))
+//      .union(spark.read.jdbc(url, "pressure_support_calculatorfor40_2018", properties))
+//      .union(spark.read.jdbc(url, "pressure_support_calculatorfor40_2019", properties))
+//      .union(spark.read.jdbc(url, "pressure_support_calculatorfor40_2020", properties))
+//      .union(spark.read.jdbc(url, "pressure_support_calculatorfor40_2021", properties))
+//      .union(spark.read.jdbc(url, "pressure_support_calculatorfor40_2022", properties))
+//      .union(spark.read.jdbc(url, "pressure_support_calculatorfor40_2023", properties))
       .union(spark.read.jdbc(url, "pressure_support_calculatorfor40_2024", properties))
       .union(spark.read.jdbc(url, "pressure_support_calculatorfor40_2025", properties))
+      .union(spark.read.jdbc(url, "pressure_support_calculatorfor40_2026", properties))
 
       .distinct()
       .select(
@@ -263,16 +265,13 @@ object Bus_5_AdvancedDipStrategy2for40day {
 
     // 结果输出与验证
     finalDF.write.mode("overwrite").parquet(outputPath)
-    println("===== 低吸策略分析结果样例 =====")
-    finalDF
-//      .where("trade_time='2025-02-11'")
-//      .orderBy(col("channel_position"))
-      .show(20, truncate = false)  // 展示非截断结果
-      finalDF
-//        .where("trade_time='2025-02-11'")
-        .groupBy($"windowSize").agg(count($"windowSize")).show()
-
-
-    spark.stop()
+//    println("===== 低吸策略分析结果样例 =====")
+//    finalDF
+      //      .where("trade_time='2025-02-11'")
+      //      .orderBy(col("channel_position"))
+//      .show(20, truncate = false)  // 展示非截断结果
+//    finalDF
+      //        .where("trade_time='2025-02-11'")
+//      .groupBy($"windowSize").agg(count($"windowSize")).show()
   }
 }

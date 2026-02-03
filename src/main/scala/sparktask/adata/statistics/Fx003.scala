@@ -79,7 +79,7 @@ object Fx003 {
         // 通过 Spark 执行 SQL 删除语句
         // 编写 SQL 删除语句
         val deleteQuery = s"DELETE FROM fx003 WHERE t1_trade_date='$formattedDate'"
-        MysqlTools.mysqlEx("fx003",deleteQuery)
+        MysqlTools.mysqlEx(deleteQuery)
         println("数据删除成功！")
       } catch {
         case e: Exception => println(s"数据删除失败: ${e.getMessage}")

@@ -149,7 +149,7 @@ object ImportData2THS {
         // 通过 Spark 执行 SQL 删除语句
         // 编写 SQL 删除语句
         val deleteQuery = s"DELETE FROM $r1_table WHERE trade_date='$setdate'"
-        MysqlTools.mysqlEx(s"$r1_table", deleteQuery)
+        MysqlTools.mysqlEx(deleteQuery)
         println("数据删除成功！")
       } catch {
         case e: Exception => println(s"数据删除失败: ${e.getMessage}")
@@ -190,7 +190,7 @@ object ImportData2THS {
       try {
         // 通过 Spark 执行 SQL 删除语句
         val deleteQuery = s"DELETE FROM $r2_table WHERE trade_date='$setdate'"
-        MysqlTools.mysqlEx(s"$r2_table", deleteQuery)
+        MysqlTools.mysqlEx(deleteQuery)
         println("数据删除成功！")
       } catch {
         case e: Exception => println(s"数据删除失败: ${e.getMessage}")
@@ -222,7 +222,7 @@ object ImportData2THS {
       try {
         // 通过 Spark 执行 SQL 删除语句
         val deleteQuery = s"DELETE FROM $n1_table WHERE trade_date='$setdate'"
-        MysqlTools.mysqlEx(s"$n1_table", deleteQuery)
+        MysqlTools.mysqlEx(deleteQuery)
         println("数据删除成功！")
       } catch {
         case e: Exception => println(s"数据删除失败: ${e.getMessage}")

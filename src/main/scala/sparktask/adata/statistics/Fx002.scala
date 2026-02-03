@@ -73,7 +73,7 @@ object Fx002 {
         val deleteQuery = s"DELETE FROM wencaiquery_venture_$setdate WHERE `风险类型`='靠近压力位'"
         println(deleteQuery)
 //        spark.read.jdbc(url, table = s"($deleteQuery) AS subquery", properties)
-        MysqlTools.mysqlEx(s"wencaiquery_venture_$setdate",deleteQuery)
+        MysqlTools.mysqlEx(deleteQuery)
         println("数据删除成功！")
       } catch {
         case e: Exception =>

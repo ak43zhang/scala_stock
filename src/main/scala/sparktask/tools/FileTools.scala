@@ -6,6 +6,7 @@ import java.util.Date
 
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.input_file_name
+import spark.ParameterSet
 
 object FileTools {
 
@@ -20,7 +21,7 @@ object FileTools {
     val sourceDir = new File(source)
     val sinkDir = new File(sink)
 
-    println(achieve.split("/").dropRight(1).mkString("/"))
+//    println(achieve.split("/").dropRight(1).mkString("/"))
 
     //创建归档目录，并将目录移动到该目录下
     val targetDirPath = achieve.split("/").dropRight(1).mkString("/")
@@ -67,14 +68,15 @@ object FileTools {
   def dataFrame2Increment(spark:SparkSession,CompleteSinkPath:String,IncrementSinkPath:String,m2:String,m3:String): Unit ={
   val date = new SimpleDateFormat("yyyyMMddMMhhss").format(new Date())
   //读取数据，确定分区(m1数据缺失，所以不更新)
-  val df2 = spark.read.parquet(s"file:///D:\\gsdata\\$IncrementSinkPath\\trade_date_month=$m2",s"file:///D:\\gsdata\\$IncrementSinkPath\\trade_date_month=$m3")
+  val df2 = spark.read.parquet(s"file:///D:\\${ParameterSet.data_content}\\$IncrementSinkPath\\trade_date_month=$m2",s"file:///D:\\${ParameterSet.data_content}\\$IncrementSinkPath\\trade_date_month=$m3")
   val pathArray = df2.withColumn("file_name", input_file_name())
     .select("file_name")
     .distinct().collect()
 
-    df2.withColumn("file_name", input_file_name())
-      .select("file_name")
-      .distinct().show(false)
+//    df2.withColumn("file_name", input_file_name())
+//      .select("file_name")
+//      .distinct().show(false)
+
   pathArray.foreach(f=>{
     //source源目录，sink目标目录，archieve归档目录
     val path = f.getAs[String]("file_name").replaceAll("file:///","")
@@ -83,10 +85,10 @@ object FileTools {
     val achieve = path.split("/").dropRight(1).mkString("/").replaceAll(IncrementSinkPath,CompleteSinkPath).replaceAll(CompleteSinkPath,"achieve/"+CompleteSinkPath+"_"+date)
     val achieveTarget = achieve.split("/").dropRight(1).mkString("/")
     //判断路径是否存在，如果存在则迁移到归档去
-    println(source)
-    println(sink)
-    println(achieve)
-    println(achieveTarget)
+//    println(source)
+//    println(sink)
+//    println(achieve)
+//    println(achieveTarget)
 
     FileTools.incrementRename(source,sink,achieve)
 

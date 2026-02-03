@@ -7,6 +7,8 @@ import java.util.Properties
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.storage.StorageLevel
+import spark.ParameterSet
+import spark.tools.MysqlProperties
 
 
 /**
@@ -22,11 +24,11 @@ object Bus_1_verify {
       .set("spark.io.compression.codec", "snappy")
       .set("spark.sql.crossJoin.enabled", "true")
       // 增加shuffle分区数
-      .set("spark.sql.shuffle.partitions", "20")
+      .set("spark.sql.shuffle.partitions", "10")
       .set("spark.sql.broadcastTimeout","60000")
-      .set("spark.driver.memory", "8g")
+      .set("spark.driver.memory", "4g")
       // 增加JDBC并行任务数
-      .set("spark.jdbc.parallelism", "20")
+      .set("spark.jdbc.parallelism", "10")
       .set("spark.local.dir", "D:\\SparkTemp")
 
     val spark = SparkSession
@@ -37,44 +39,60 @@ object Bus_1_verify {
 
     spark.sparkContext.setLogLevel("ERROR")
 
-    val url = "jdbc:mysql://localhost:3306/gs"
-    val driver = "com.mysql.cj.jdbc.Driver"
-    val user = "root"
-    val pwd = "123456"
+    val properties = MysqlProperties.getMysqlProperties()
 
-    val properties = new Properties()
-    properties.setProperty("user", user)
-    properties.setProperty("password", pwd)
-    properties.setProperty("url", url)
-    properties.setProperty("driver", driver)
+    val year = "2026"
+    
+    create_table(spark,properties,year)
 
-    val year = "2025"
-    create_table(spark,url,properties,year)
     val now_day = getFinalDate
     println(now_day)
 
+    wzx(spark,year,now_day)
+
+    //财联社分析数据验证 多少分析完，多少未分析完
+    println("==============财联社分析数据验证==============")
+    spark.sql("select sj,count(1) as zs,sum(if(analysis=1,1,0)) as t,sum(if(analysis=1,0,1)) as f  from (select substring(`发布时间`,1,10) as sj,analysis from news_cls) group by sj order by sj desc")
+      .where(f"f!=0")
+      .show(200)
+
+    //combine分析数据验证 多少分析完，多少未分析完
+    println("==============combine分析数据验证==============")
+    spark.sql("select sj,count(1) as zs,sum(if(analysis=1,1,0)) as t,sum(if(analysis=1,0,1)) as f  from (select substring(`发布时间`,1,10) as sj,analysis from news_combine) group by sj order by sj desc")
+      .where("f!=0")
+      .show(200)
+
+    //jhsaggg分析数据验证 多少分析完，多少未分析完
+    println("==============jhsaggg分析数据验证==============")
+    spark.sql("select sj,count(1) as zs,sum(if(analysis=1,1,0)) as t,sum(if(analysis=1,0,1)) as f  from (select substring(`公告日期`,1,10) as sj,analysis from jhsaggg) group by sj order by sj desc")
+      .where("f!=0")
+      .show(5)
+
+    //涨停板分析数据验证 多少分析完，多少未分析完
+    println("==============涨停板分析数据验证==============")
+    spark.sql("select sj,count(1) as zs,sum(if(analysis=1,1,0)) as t,sum(if(analysis=1,0,1)) as f  from (select substring(`trade_date`,1,10) as sj,analysis from ztb_day) group by sj order by sj desc")
+      .where("f!=0")
+      .show(5)
+
+
+    val endm = System.currentTimeMillis()
+    println("共耗时：" + (endm - startm) / 1000 + "秒")
+    spark.close()
+  }
+
+  def wzx(spark:SparkSession,year:String,now_day:String): Unit ={
     //验证gpsj_day_all_hs数据完整性
     println("==============验证gpsj_day_all_hs数据完整性==============")
     spark.sql(
       s"""
-        |select * from data_jyrl as t1 left join gpsj_day_all_hs as t2 on t1.trade_date=t2.trade_date
-        |where t2.trade_date is null and trade_status=1 and t1.trade_date like '%$year%' and t1.trade_date<='$now_day' order by t1.trade_date
-        |""".stripMargin).show()
+         |select * from data_jyrl as t1 left join gpsj_day_all_hs as t2 on t1.trade_date=t2.trade_date
+         |where t2.trade_date is null and trade_status=1 and t1.trade_date like '%$year%' and t1.trade_date<='$now_day' order by t1.trade_date
+         |""".stripMargin).show()
 
     println("==============验证gpsj_hs_10days/gpsj_hs_h10days/gpsj_hs_20days数据完整性==============")
     spark.sql(
       s"""
          |select * from data_jyrl as t1 left join gpsj_hs_10days as t2 on t1.trade_date=t2.t0_trade_date
-         |where t2.t0_trade_date is null and trade_status=1 and t1.trade_date like '%$year%' and t1.trade_date<='$now_day' order by t1.trade_date
-         |""".stripMargin).show()
-    spark.sql(
-      s"""
-         |select * from data_jyrl as t1 left join gpsj_hs_h10days as t2 on t1.trade_date=t2.t0_trade_date
-         |where t2.t0_trade_date is null and trade_status=1 and t1.trade_date like '%$year%' and t1.trade_date<='$now_day' order by t1.trade_date
-         |""".stripMargin).show()
-    spark.sql(
-      s"""
-         |select * from data_jyrl as t1 left join gpsj_hs_20days as t2 on t1.trade_date=t2.t0_trade_date
          |where t2.t0_trade_date is null and trade_status=1 and t1.trade_date like '%$year%' and t1.trade_date<='$now_day' order by t1.trade_date
          |""".stripMargin).show()
 
@@ -94,13 +112,19 @@ object Bus_1_verify {
          |where t2.trade_date is null and trade_status=1 and t1.trade_date like '%$year%' and t1.trade_date<='$now_day' order by t1.trade_date
          |""".stripMargin).show()
 
-    //TODO popularity_day 热度数据完整性验证
+    //popularity_day 热度数据完整性验证
+    println("==============验证热度数据每日更新数据完整性==============")
+    spark.sql(
+      s"""
+         |select * from data_jyrl as t1 left join popularity_day as t2 on t1.trade_date=t2.trade_date
+         |where t2.trade_date is null and trade_status=1 and t1.trade_date like '%$year%' and t1.trade_date<='$now_day' order by t1.trade_date
+         |""".stripMargin).show()
 
     //验证龙虎榜个股数据完整新
     println("==============验证龙虎榜个股数据完整性==============")
     spark.sql(
       s"""
-         |select * from data_jyrl as t1 left join data_lhb_history2 as t2 on t1.trade_date=t2.trade_date
+         |select * from data_jyrl as t1 left join data_lhb_history as t2 on t1.trade_date=t2.trade_date
          |where t2.trade_date is null and trade_status=1 and t1.trade_date like '%$year%' and t1.trade_date<='$now_day' order by t1.trade_date
          |""".stripMargin).show()
 
@@ -127,47 +151,25 @@ object Bus_1_verify {
          |where t2.trade_date is null and trade_status=1 and t1.trade_date like '%$year%' and t1.trade_date<='$now_day' order by t1.trade_date
          |""".stripMargin).show()
 
+    println("==============验证压力支撑数据完整性（固定120周期）==============")
+    spark.sql(
+      s"""
+         |select * from data_jyrl as t1 left join pressure_support_calculatorfor120_$year as t2 on t1.trade_date=t2.trade_date
+         |where t2.trade_date is null and trade_status=1 and t1.trade_date like '%$year%' and t1.trade_date<='$now_day' order by t1.trade_date
+         |""".stripMargin).show()
+
     //风险数据完整性验证 TODO
-//    println("==============风险数据完整性验证==============")
-//    spark.sql("")
-
-    //财联社分析数据验证 多少分析完，多少未分析完
-    println("==============财联社分析数据验证==============")
-    spark.sql("select sj,count(1) as zs,sum(if(analysis=1,1,0)) as t,sum(if(analysis=1,0,1)) as f  from (select substring(`发布时间`,1,10) as sj,analysis from news_cls) group by sj order by sj desc")
-      .where("f!=0")
-      .show()
-
-    //combine分析数据验证 多少分析完，多少未分析完
-    println("==============combine分析数据验证==============")
-    spark.sql("select sj,count(1) as zs,sum(if(analysis=1,1,0)) as t,sum(if(analysis=1,0,1)) as f  from (select substring(`发布时间`,1,10) as sj,analysis from news_combine) group by sj order by sj desc")
-      .where("f!=0")
-      .show()
-        
-    //financial分析数据验证 多少分析完，多少未分析完
-    println("==============financial分析数据验证==============")
-    spark.sql("select sj,count(1) as zs,sum(if(analysis=1,1,0)) as t,sum(if(analysis=1,0,1)) as f  from (select substring(`时间`,1,10) as sj,analysis from news_financial) group by sj order by sj desc")
-      .where("f!=0")
-      .show()
-
-    //jhsaggg分析数据验证 多少分析完，多少未分析完
-    println("==============jhsaggg分析数据验证==============")
-    spark.sql("select sj,count(1) as zs,sum(if(analysis=1,1,0)) as t,sum(if(analysis=1,0,1)) as f  from (select substring(`公告日期`,1,10) as sj,analysis from jhsaggg) group by sj order by sj desc")
-      .where("f!=0")
-      .show()
-
-    //涨停板分析数据验证 多少分析完，多少未分析完
-    println("==============涨停板分析数据验证==============")
-    spark.sql("select sj,count(1) as zs,sum(if(analysis=1,1,0)) as t,sum(if(analysis=1,0,1)) as f  from (select substring(`trade_date`,1,10) as sj,analysis from ztb_day) group by sj order by sj desc")
-      .where("f!=0")
-      .show()
-
-
-    val endm = System.currentTimeMillis()
-    println("共耗时：" + (endm - startm) / 1000 + "秒")
-    spark.close()
+    println("==============风险数据完整性验证==============")
+    spark.sql(
+      s"""
+         |select * from data_jyrl as t1 left join venture as t2 on t1.trade_date=t2.trade_date
+         |where t2.trade_date is null and trade_status=1 and t1.trade_date like '%$year%' and t1.trade_date<='$now_day' order by t1.trade_date
+         |""".stripMargin).show()
   }
 
-  def create_table(spark:SparkSession,url:String,properties: Properties,year:String): Unit ={
+  def create_table(spark:SparkSession,properties: Properties,year:String): Unit ={
+    val url = properties.getProperty("url")
+
     val jyrldf: DataFrame = spark.read.jdbc(url, "data_jyrl", properties)
     jyrldf.persist(StorageLevel.MEMORY_AND_DISK_SER)
     jyrldf.createOrReplaceTempView("data_jyrl")
@@ -176,6 +178,17 @@ object Bus_1_verify {
         .select("trade_date","`股票代码`","analysis").distinct()
     ztbdf.persist(StorageLevel.MEMORY_AND_DISK_SER)
     ztbdf.createOrReplaceTempView("ztb_day")
+
+    val popularity_daydf: DataFrame = spark.read.jdbc(url, s"popularity_day", properties)
+      .select("trade_date","`股票代码`").distinct()
+    popularity_daydf.persist(StorageLevel.MEMORY_AND_DISK_SER)
+    popularity_daydf.createOrReplaceTempView("popularity_day")
+
+    val venturedf: DataFrame = spark.read.jdbc(url, s"wencaiquery_venture_$year", properties)
+//      .where(s"trade_date='$setdate'")
+//    println("venturedf-----------"+venturedf.count())
+    venturedf.createOrReplaceTempView("venture")
+
 
     val gsrldf: DataFrame = spark.read.jdbc(url, s"data_gsdt", properties)
       .select("`交易日`").toDF("trade_date").distinct()
@@ -187,59 +200,57 @@ object Bus_1_verify {
     lhbdf.persist(StorageLevel.MEMORY_AND_DISK_SER)
     lhbdf.createOrReplaceTempView("data_lhb")
 
-    val lhb2df: DataFrame = spark.read.jdbc(url, s"data_lhb_history2", properties)
+    val lhb2df: DataFrame = spark.read.jdbc(url, s"data_lhb_history", properties)
       .select("trade_date").distinct()
     lhb2df.persist(StorageLevel.MEMORY_AND_DISK_SER)
-    lhb2df.createOrReplaceTempView("data_lhb_history2")
+    lhb2df.createOrReplaceTempView("data_lhb_history")
 
-    val news_cls_df: DataFrame = spark.read.jdbc(url, "news_cls", properties)
+    val news_cls_df: DataFrame = spark.read.jdbc(url, "news_cls"+year, properties)
     news_cls_df.persist(StorageLevel.MEMORY_AND_DISK_SER)
     news_cls_df.createOrReplaceTempView("news_cls")
 
-    val news_combine_df: DataFrame = spark.read.jdbc(url, "news_combine", properties)
+    val news_combine_df: DataFrame = spark.read.jdbc(url, "news_combine"+year, properties)
     news_combine_df.persist(StorageLevel.MEMORY_AND_DISK_SER)
     news_combine_df.createOrReplaceTempView("news_combine")
 
-    val news_financial_df: DataFrame = spark.read.jdbc(url, "news_financial", properties)
-    news_financial_df.persist(StorageLevel.MEMORY_AND_DISK_SER)
-    news_financial_df.createOrReplaceTempView("news_financial")
+//    val news_financial_df: DataFrame = spark.read.jdbc(url, "news_financial", properties)
+//    news_financial_df.persist(StorageLevel.MEMORY_AND_DISK_SER)
+//    news_financial_df.createOrReplaceTempView("news_financial")
 
-    val jhsaggg_df: DataFrame = spark.read.jdbc(url, "jhsaggg2015", properties)
-      .union(spark.read.jdbc(url, "jhsaggg2016", properties))
-      .union(spark.read.jdbc(url, "jhsaggg2017", properties))
-      .union(spark.read.jdbc(url, "jhsaggg2018", properties))
-      .union(spark.read.jdbc(url, "jhsaggg2019", properties))
-      .union(spark.read.jdbc(url, "jhsaggg2020", properties))
-      .union(spark.read.jdbc(url, "jhsaggg2021", properties))
-      .union(spark.read.jdbc(url, "jhsaggg2022", properties))
-      .union(spark.read.jdbc(url, "jhsaggg2023", properties))
-      .union(spark.read.jdbc(url, "jhsaggg2024", properties))
-      .union(spark.read.jdbc(url, "jhsaggg2025", properties))
+//    val jhsaggg_df: DataFrame = spark.read.jdbc(url, "jhsaggg2015", properties)
+//      .union(spark.read.jdbc(url, "jhsaggg2016", properties))
+//      .union(spark.read.jdbc(url, "jhsaggg2017", properties))
+//      .union(spark.read.jdbc(url, "jhsaggg2018", properties))
+//      .union(spark.read.jdbc(url, "jhsaggg2019", properties))
+//      .union(spark.read.jdbc(url, "jhsaggg2020", properties))
+//      .union(spark.read.jdbc(url, "jhsaggg2021", properties))
+//      .union(spark.read.jdbc(url, "jhsaggg2022", properties))
+//      .union(spark.read.jdbc(url, "jhsaggg2023", properties))
+//      .union(spark.read.jdbc(url, "jhsaggg2024", properties))
+//      .union(spark.read.jdbc(url, "jhsaggg2025", properties))
+
+    val jhsaggg_df: DataFrame = spark.read.jdbc(url, "jhsaggg"+year, properties)
+
 
     jhsaggg_df.persist(StorageLevel.MEMORY_AND_DISK_SER)
     jhsaggg_df.createOrReplaceTempView("jhsaggg")
 
-    spark.read.parquet(s"file:///D:\\gsdata\\gpsj_day_all_hs\\trade_date_month=202*")
+    spark.read.parquet(s"file:///D:\\${ParameterSet.data_content}\\gpsj_day_all_hs\\trade_date_month=202*")
     .select("trade_date").distinct()
     .createOrReplaceTempView("gpsj_day_all_hs")
 
-    spark.read.parquet(s"file:///D:\\gsdata\\gpsj_hs_10days\\trade_date_month=202*")
+    spark.read.parquet(s"file:///D:\\${ParameterSet.data_content}\\gpsj_hs_10days\\trade_date_month=202*")
       .select("t0_trade_date").distinct()
       .createOrReplaceTempView("gpsj_hs_10days")
-
-    spark.read.parquet(s"file:///D:\\gsdata\\gpsj_hs_h10days\\trade_date_month=202*")
-      .select("t0_trade_date").distinct()
-      .createOrReplaceTempView("gpsj_hs_h10days")
-
-    spark.read.parquet(s"file:///D:\\gsdata\\gpsj_hs_20days\\trade_date_month=202*")
-      .select("t0_trade_date").distinct()
-      .createOrReplaceTempView("gpsj_hs_20days")
 
     val stockDF  = spark.read.jdbc(url, s"pressure_support_calculator$year", properties)
     stockDF.createOrReplaceTempView(s"pressure_support_calculator$year")
 
     val stock40DF  = spark.read.jdbc(url, s"pressure_support_calculatorfor40_$year", properties)
     stock40DF.createOrReplaceTempView(s"pressure_support_calculatorfor40_$year")
+
+    val stock120DF  = spark.read.jdbc(url, s"pressure_support_calculatorfor120_$year", properties)
+    stock120DF.createOrReplaceTempView(s"pressure_support_calculatorfor120_$year")
   }
 
 

@@ -6,6 +6,8 @@ import org.apache.spark.SparkConf
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types.{DecimalType, IntegerType, StringType}
 import org.apache.spark.sql.{DataFrame, SparkSession}
+import spark.ParameterSet
+import spark.tools.MysqlProperties
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -15,6 +17,7 @@ import scala.collection.mutable.ArrayBuffer
  * ods原始数据层
  */
 object Bus_2_SparkCollectMySql2ParquetIncrement {
+
   def main(args: Array[String]): Unit = {
     val conf = new SparkConf()
       .setMaster("local[*]")
@@ -22,7 +25,7 @@ object Bus_2_SparkCollectMySql2ParquetIncrement {
       .set("spark.sql.crossJoin.enabled", "true")
       // 增加shuffle分区数
       .set("spark.sql.shuffle.partitions","10")
-      .set("spark.driver.memory","4g")
+      .set("spark.driver.memory","6g")
       // 增加JDBC并行任务数
       .set("spark.jdbc.parallelism", "10")
       .set("spark.local.dir","D:\\SparkTemp")
@@ -35,53 +38,36 @@ object Bus_2_SparkCollectMySql2ParquetIncrement {
 
     spark.sparkContext.setLogLevel("ERROR")
 
-    val url = "jdbc:mysql://localhost:3306/gs"
-    val properties = getMysqlProperties()
+    val properties = MysqlProperties.getMysqlProperties()
+
     val startm = System.currentTimeMillis()
 
 //    val jyrlsAll = ArrayBuffer("data2024_gpsj_day_1219")
     val jyrlsSome = ArrayBuffer(
-      "data_gpsj_day_20251027"
+      "data_gpsj_day_20251215"
     )
 
     /**
      * 增量股票数据更新
      */
-    val CompleteSinkPath = "gpsj_day_all_hs"
-    updateGpsjIncrement(updateGpsj(spark,url,jyrlsSome,properties),CompleteSinkPath)
+    updateGpsjIncrement(updateGpsj(spark,jyrlsSome,properties))
 
     val endm = System.currentTimeMillis()
     println("共耗时："+(endm-startm)/1000+"秒")
     spark.close()
   }
 
-  def getMysqlProperties(): Properties ={
-    val url = "jdbc:mysql://localhost:3306/gs"
-    val driver = "com.mysql.cj.jdbc.Driver"
-    val user = "root"
-    val pwd = "123456"
 
-    val properties = new Properties()
-    properties.setProperty("user", user)
-    properties.setProperty("password", pwd)
-    properties.setProperty("url", url)
-    properties.setProperty("driver", driver)
-    properties.setProperty("partitionColumn", "amount") // 选择一个分区列
-    properties.setProperty("lowerBound", "10000") // 分区列的最小值
-    properties.setProperty("upperBound", "1000000") // 分区列的最大值
-    properties.setProperty("numPartitions", "8") // 设置分区数量
-    properties
-  }
 
   /**
    * 只做增量
    * @param df
-   * @param CompleteSinkPath
    */
-  def updateGpsjIncrement(df:DataFrame,CompleteSinkPath:String)={
+  def updateGpsjIncrement(df:DataFrame)={
+    val CompleteSinkPath = "gpsj_day_all_hs"
     df.distinct().repartition(1).write.mode("append")
       .partitionBy("trade_date_month")
-      .parquet(s"file:///D:\\gsdata\\$CompleteSinkPath")
+      .parquet(s"file:///D:\\${ParameterSet.data_content}\\$CompleteSinkPath")
 
   }
 
@@ -89,7 +75,8 @@ object Bus_2_SparkCollectMySql2ParquetIncrement {
    * 按天更新股票数据
    *
    */
-  def updateGpsj(spark: SparkSession,url:String,jyrls:ArrayBuffer[String],properties: Properties): DataFrame = {
+  def updateGpsj(spark: SparkSession,jyrls:ArrayBuffer[String],properties: Properties): DataFrame = {
+    val url = properties.getProperty("url")
     var df:DataFrame = spark.read.jdbc(url, jyrls(0), properties)
     if(jyrls.size>1){
       for(i<-1 until jyrls.size){
