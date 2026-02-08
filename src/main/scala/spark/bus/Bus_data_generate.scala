@@ -52,11 +52,11 @@ object Bus_data_generate {
 
     //参数设置
     val jyrlsSome = ArrayBuffer(
-      "data_gpsj_day_20260130"
+      "data_gpsj_day_20260206"
     )
-    val months = "2025-11,2025-12,2026-01"
-    val start_time ="2026-01-30"
-    val end_time ="2026-01-30"
+    val months = "2025-12,2026-01,2026-02"
+    val start_time ="2026-02-06"
+    val end_time ="2026-02-06"
 
     updateGpsjIncrement(updateGpsj(spark,jyrlsSome,properties))
     makeWide(spark,months)

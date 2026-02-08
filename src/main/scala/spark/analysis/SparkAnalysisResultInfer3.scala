@@ -6,6 +6,7 @@ import org.apache.spark.SparkConf
 import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.storage.StorageLevel
+import spark.tools.MysqlProperties
 import sparktask.tools.MysqlTools
 
 /**
@@ -37,16 +38,8 @@ object SparkAnalysisResultInfer3 {
 
     spark.sparkContext.setLogLevel("ERROR")
 
-    val url = "jdbc:mysql://localhost:3306/gs"
-    val driver = "com.mysql.cj.jdbc.Driver"
-    val user = "root"
-    val pwd = "123456"
-
-    val properties = new Properties()
-    properties.setProperty("user", user)
-    properties.setProperty("password", pwd)
-    properties.setProperty("url", url)
-    properties.setProperty("driver", driver)
+    val properties = MysqlProperties.getMysqlProperties()
+    val url = properties.getProperty("url")
 
     create_table(spark:SparkSession,url,properties)
 
@@ -59,11 +52,11 @@ object SparkAnalysisResultInfer3 {
      * 结果表数据  result_df
      */
 
-    val start_time ="2026-01-01"
-    val end_time ="2026-02-02"
+    val start_time ="2021-01-01"
+    val end_time ="2026-02-05"
 
     var df:DataFrame = null
-    for(i<-1 to 10){
+    for(i<-1 to 1){
       val mid_df:DataFrame = analysisZtZb(spark,url,properties,start_time,end_time)
       if(df==null){
         df = mid_df

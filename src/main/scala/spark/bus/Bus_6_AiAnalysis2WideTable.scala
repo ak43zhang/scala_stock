@@ -47,9 +47,9 @@ object Bus_6_AiAnalysis2WideTable {
 
     val year = end_time.substring(0,4)
 
-//    analysis_news2Parquet(spark,properties,year)
+    analysis_news2Parquet(spark,properties,year)
     analysis_notices2Parquet(spark,properties,year)
-//    analysis_ztb2Parquet(spark,properties,year)
+    analysis_ztb2Parquet(spark,properties,year)
     analysis_area2Parquet(spark,properties,year)
 
 //    analysis2news(spark)
@@ -65,7 +65,7 @@ object Bus_6_AiAnalysis2WideTable {
     val url = properties.getProperty("url")
     import spark.implicits._
     val df: DataFrame = spark.read.jdbc(url, "analysis_news"+year, properties)
-      .union(spark.read.jdbc(url, "analysis_news2025", properties))
+//      .union(spark.read.jdbc(url, "analysis_news2025", properties))
 
     val stockDetailSchema = new StructType()
       .add("a股代码", StringType)
@@ -152,7 +152,7 @@ object Bus_6_AiAnalysis2WideTable {
     val url = properties.getProperty("url")
     import spark.implicits._
     val df: DataFrame = spark.read.jdbc(url, "analysis_notices"+year, properties)
-      .union(spark.read.jdbc(url, "analysis_notices2025", properties))
+//      .union(spark.read.jdbc(url, "analysis_notices2025", properties))
 
     val messageSchema = new StructType()
       .add("公告id", StringType)
@@ -193,7 +193,7 @@ object Bus_6_AiAnalysis2WideTable {
 
     resultDf.createOrReplaceTempView("dwd_notices")
 
-    val notices_df: DataFrame = spark.read.jdbc(url, "jhsaggg2025", properties).where("analysis='1'")
+    val notices_df: DataFrame = spark.read.jdbc(url, s"jhsaggg$year", properties).where("analysis='1'")
       .select("内容hash","公告日期","公告标题").toDF("key","time","title")
 
     notices_df.createOrReplaceTempView("notices_df")
@@ -208,7 +208,7 @@ object Bus_6_AiAnalysis2WideTable {
   def analysis_ztb2Parquet(spark:SparkSession,properties: Properties,year:String): Unit ={
     val url = properties.getProperty("url")
     val df: DataFrame = spark.read.jdbc(url, "analysis_ztb"+year, properties)
-      .union(spark.read.jdbc(url, "analysis_ztb2025", properties))
+//      .union(spark.read.jdbc(url, "analysis_ztb2025", properties))
     df.createOrReplaceTempView("ztb")
     val resultdf = spark.sql(
       """
@@ -235,7 +235,7 @@ object Bus_6_AiAnalysis2WideTable {
   def analysis_area2Parquet(spark:SparkSession,properties: Properties,year:String): Unit ={
     val url = properties.getProperty("url")
     val df: DataFrame = spark.read.jdbc(url, "analysis_area"+year, properties)
-      .union(spark.read.jdbc(url, "analysis_area2025", properties))
+//      .union(spark.read.jdbc(url, "analysis_area2025", properties))
     df.createOrReplaceTempView("area")
     val resultdf = spark.sql(
       """

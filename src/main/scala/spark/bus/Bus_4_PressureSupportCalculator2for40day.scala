@@ -171,10 +171,9 @@ object Bus_4_PressureSupportCalculator2for40day {
     val indf = spark.read.parquet(inputPath)
     indf.persist(StorageLevel.MEMORY_AND_DISK_SER)
     for (day <- dayList) {
-      println(day)
       val year = day.substring(0,4)
       val tablename = s"pressure_support_calculatorfor40_$year"
-      //      println(tablename)
+      println(day+"-----"+year+"-----"+tablename)
       // 数据加载与校验
       val rawDS = loadAndValidateData(spark, indf, day)
         .persist(StorageLevel.MEMORY_AND_DISK_SER)

@@ -77,7 +77,9 @@ object Bus_2_SparkCollectMySql2ParquetIncrement {
    */
   def updateGpsj(spark: SparkSession,jyrls:ArrayBuffer[String],properties: Properties): DataFrame = {
     val url = properties.getProperty("url")
+    println("准备处理："+jyrls(0))
     var df:DataFrame = spark.read.jdbc(url, jyrls(0), properties)
+    println("处理完毕："+jyrls(0))
     if(jyrls.size>1){
       for(i<-1 until jyrls.size){
         println("准备处理："+jyrls(i))

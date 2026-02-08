@@ -54,8 +54,8 @@ object SparkAnalysisZtb3 {
 
     val startm = System.currentTimeMillis()
 
-    val start_time ="2025-12-01"
-    val end_time ="2026-02-02"
+    val start_time ="2026-02-06"
+    val end_time ="2026-02-06"
 
     // 涨停板dataframe
     val ztb_df: DataFrame = spark.read.jdbc(url, "ztb_day", properties)
@@ -136,6 +136,10 @@ object SparkAnalysisZtb3 {
       val n_day_ago = date_list.toList(20)
       println(n_day_ago)
       val year = setdate.substring(0,4)
+      var nb_year = "'"+year+"'"
+//      if(setdate<year+"-03-31"){
+//        nb_year = nb_year+",'"+(year.toInt - 1).toString+"'"
+//      }
       println(s"==========================设置时间为${setdate},则处理的是${setdate}的股票，分析股票则用上一交易日：${yes_day}============================")
 
       //领域sql
@@ -194,7 +198,7 @@ object SparkAnalysisZtb3 {
       venturedf.createOrReplaceTempView("venture")
 
       var venture_year_df: DataFrame = spark.read.jdbc(url, s"wencaiquery_venture_year", properties)
-        .where(s"year='$year'")
+        .where(s"year in ($nb_year)")
             println("venture_year_df-----------"+venture_year_df.count())
       venture_year_df.createOrReplaceTempView("venture_year")
 
@@ -400,7 +404,6 @@ object SparkAnalysisZtb3 {
           |and (fxdx_lk not like '%重大%' or fxdx_lk is null)
           |and (total_score<=15 or total_score is null)
           |and levels not like '%5%'
-
           |""".stripMargin).orderBy("zdf")
 
 //      filter_result_df.show(1000)

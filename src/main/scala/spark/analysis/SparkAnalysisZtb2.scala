@@ -7,6 +7,7 @@ import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.storage.StorageLevel
 import spark.ParameterSet
+import spark.tools.MysqlProperties
 import sparktask.tools.MysqlTools
 
 import scala.collection.mutable.ArrayBuffer
@@ -49,16 +50,8 @@ object SparkAnalysisZtb2 {
 
     spark.sparkContext.setLogLevel("ERROR")
 
-    val url = "jdbc:mysql://localhost:3306/gs"
-    val driver = "com.mysql.cj.jdbc.Driver"
-    val user = "root"
-    val pwd = "123456"
-
-    val properties = new Properties()
-    properties.setProperty("user", user)
-    properties.setProperty("password", pwd)
-    properties.setProperty("url", url)
-    properties.setProperty("driver", driver)
+    val properties = MysqlProperties.getMysqlProperties()
+    val url = properties.getProperty("url")
 
     val start_time = "2025-10-27"
     val end_time ="2025-10-27"
