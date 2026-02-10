@@ -1,4 +1,4 @@
-package spark.bus
+package spark.bus.stock
 
 import java.text.SimpleDateFormat
 import java.util.Date

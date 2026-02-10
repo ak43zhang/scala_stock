@@ -1,7 +1,7 @@
-package spark.bus
+package spark.bus.stock
 
-import java.time.format.{DateTimeFormatter, DateTimeParseException}
-import java.time.{LocalDate, LocalDateTime, ZoneId}
+import java.time.format.DateTimeFormatter
+import java.time.{LocalDateTime, ZoneId}
 import java.util.{Date, Properties}
 
 import org.apache.spark.sql.expressions.Window
@@ -10,13 +10,15 @@ import org.apache.spark.sql.types.{DecimalType, IntegerType, StringType}
 import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
 import org.apache.spark.storage.StorageLevel
 import spark.ParameterSet
-import sparktask.tools.MysqlTools
 import spark.tools.MysqlProperties
+import sparktask.tools.MysqlTools
 
 import scala.math.Ordering
 
 /**
- * 工业级金融压力支撑位计算系统 40日作为固定周期
+ * 总线4
+ *
+ * 工业级金融压力支撑位计算系统
  *
  * 功能特性：
  * 1. 多指标复合计算：整合4种经典技术分析方法
@@ -44,7 +46,7 @@ import scala.math.Ordering
  * - 算法交易风控：采用high_low_pressure/high_low_support作为硬止损点
  * - 组合策略：各指标加权平均（建议权重：布林带40%，移动平均30%，枢轴点20%，前高前低10%）
  */
-object Bus_4_PressureSupportCalculator2for40day {
+object Bus_4_PressureSupportCalculator {
   // 在类顶部添加隐式排序定义
   implicit val localDateTimeOrdering: Ordering[LocalDateTime] =
     Ordering.by(_.atZone(ZoneId.systemDefault).toInstant.toEpochMilli)
@@ -125,55 +127,51 @@ object Bus_4_PressureSupportCalculator2for40day {
 
     val spark = SparkSession.builder()
       .appName(this.getClass.getSimpleName)
-      .master("local[*]")
+      .master("local[4]")
       //      .config("spark.sql.parquet.compression.codec", "snappy")
-      .config("spark.sql.shuffle.partitions", "12")
+      .config("spark.sql.shuffle.partitions", "4")
       .config("spark.driver.memory", "4g")
       // 增加JDBC并行任务数
-      .config("spark.jdbc.parallelism", "12")
+      .config("spark.jdbc.parallelism", "4")
       .config("spark.local.dir", "D:\\SparkTemp")
       .getOrCreate()
 
     val properties = MysqlProperties.getMysqlProperties()
 
-    spark.sparkContext.setLogLevel("ERROR")//
+    spark.sparkContext.setLogLevel("ERROR")//[18,19]
 
+    val start_time ="2025-12-17"
+    val end_time ="2025-12-18"
 
-//    val start_time ="2015-01-01"
-//    val end_time ="2018-01-01"
-
-    val start_time ="2025-12-16"
-    val end_time ="2025-12-17"
-
-    psc40(spark,properties,start_time,end_time)
-
+    psc(spark,properties,start_time,end_time)
 
     val endm = System.currentTimeMillis()
     println("共耗时：" + (endm - startm) / 1000 + "秒")
     spark.close()
   }
 
-
-
-  def psc40(spark:SparkSession,properties:Properties,start_time:String,end_time:String): Unit ={
-
+  def psc(spark:SparkSession,properties:Properties,start_time:String,end_time:String): Unit ={
     val url = properties.getProperty("url")
-    val years = getExtendedYearSuffixes(start_time, end_time)
 
-    val inputPath = s"file:///D:\\${ParameterSet.data_content}\\gpsj_day_all_hs\\trade_date_month=20[$years]*" //14,15,16,17,18,19,20,21,22,23,
-//    val outputPath = s"file:///D:\\${ParameterSet.data_content}\\pressure_support_calculator"
+    val years = Bus_4_PressureSupportCalculator2for40day.getExtendedYearSuffixes(start_time, end_time)
 
-    val df: DataFrame = spark.read.jdbc(url, "data_jyrl", properties)
+    val inputPath = s"file:///D:\\${ParameterSet.data_content}\\gpsj_day_all_hs\\trade_date_month=20[$years]*" //14,15,16,17,18,
+    val outputPath = s"file:///D:\\${ParameterSet.data_content}\\pressure_support_calculator"
+
+    // 注册自定义Kryo序列化（生产环境需要实现Registrator）
+    spark.sparkContext.getConf.registerKryoClasses(Array(classOf[RawData], classOf[EnhancedData], classOf[ResultData]))
+
+    var df: DataFrame = spark.read.jdbc(url, "data_jyrl", properties)
     df.createOrReplaceTempView("data_jyrl")
     val dayList = spark.sql(s"select trade_date from data_jyrl where  trade_date between '$start_time' and '$end_time' and trade_status='1' order by trade_date desc").collect().map(f=>f.getAs[String]("trade_date"))
-    //    val dayList = spark.sql("select trade_date from data_jyrl where  trade_date between '2024-01-01' and '2024-08-16' and trade_status='1' order by trade_date desc").collect().map(f => f.getAs[String]("trade_date"))
+    //    val dayList = spark.sql("select trade_date from data_jyrl where  trade_date between '2019-01-01' and '2019-07-19' and trade_status='1' order by trade_date desc").collect().map(f => f.getAs[String]("trade_date"))
 
-    val indf = spark.read.parquet(inputPath)
-    indf.persist(StorageLevel.MEMORY_AND_DISK_SER)
+    val indf = spark.read.parquet(inputPath).persist(StorageLevel.MEMORY_AND_DISK_SER)
     for (day <- dayList) {
       val year = day.substring(0,4)
-      val tablename = s"pressure_support_calculatorfor40_$year"
+      val tablename = s"pressure_support_calculator$year"
       println(day+"-----"+year+"-----"+tablename)
+
       // 数据加载与校验
       val rawDS = loadAndValidateData(spark, indf, day)
         .persist(StorageLevel.MEMORY_AND_DISK_SER)
@@ -191,7 +189,7 @@ object Bus_4_PressureSupportCalculator2for40day {
         .persist(StorageLevel.MEMORY_AND_DISK_SER)
 
       // 结果校验与持久化
-      validateAndSaveResults(tablename, rawDS, resultDS, day, url, properties)
+      validateAndSaveResults(tablename, rawDS, resultDS, day, url, properties, outputPath)
 
       // 释放缓存
       rawDS.unpersist()
@@ -201,36 +199,6 @@ object Bus_4_PressureSupportCalculator2for40day {
       println(s"当前时间: " + new Date)
     }
     indf.unpersist()
-  }
-
-  /**
-   * 核心函数：生成包含起始年-1到结束年的年份后两位拼接字符串
-   */
-  def getExtendedYearSuffixes(startDateStr: String, endDateStr: String): String = {
-    // 定义日期格式化器（匹配yyyy-MM-dd格式）
-    val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
-
-    try {
-      // 解析起始和结束日期
-      val startDate = LocalDate.parse(startDateStr, formatter)
-      val endDate = LocalDate.parse(endDateStr, formatter)
-
-      // 提取完整年份
-      val startYear = startDate.getYear
-      val endYear = endDate.getYear
-
-      // 生成范围：起始年-1 到 结束年
-      val yearRange = (startYear - 1) to endYear
-
-      // 提取年份后两位并拼接成逗号分隔的字符串
-      val yearSuffixes = yearRange.map(year => year.toString.substring(2))
-      yearSuffixes.mkString(",")
-    } catch {
-      // 处理日期格式错误的情况
-      case e: DateTimeParseException =>
-        println(s"日期格式错误：${e.getMessage}")
-        ""
-    }
   }
 
   /** 数据加载与校验 */
@@ -283,7 +251,7 @@ object Bus_4_PressureSupportCalculator2for40day {
     import spark.implicits._
 
     // 参数候选范围（生产环境可配置化）
-    val windowCandidates = (40 to 40 by 5).toArray
+    val windowCandidates = (10 to 120 by 5).toArray
 
     // 注册累加器用于异常监控
     val errorAccumulator = spark.sparkContext.collectionAccumulator[String]("calculationErrors")
@@ -507,7 +475,7 @@ object Bus_4_PressureSupportCalculator2for40day {
   }
 
   /** 结果校验与存储 */
-  private def validateAndSaveResults(tablename:String, rawDS: Dataset[RawData], resultDS: Dataset[ResultData], day: String, url: String, properties: Properties): Unit = {
+  private def validateAndSaveResults(tablename:String, rawDS: Dataset[RawData], resultDS: Dataset[ResultData], day: String, url: String, properties: Properties, path: String): Unit = {
 
     // 基础数据与结果数据合并
     // 找出两个表中都存在的列

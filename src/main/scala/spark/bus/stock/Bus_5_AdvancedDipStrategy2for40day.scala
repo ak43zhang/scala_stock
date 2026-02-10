@@ -1,11 +1,11 @@
-package spark.bus
+package spark.bus.stock
 
 import java.math.BigDecimal
 import java.util.Properties
 
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.types._
+import org.apache.spark.sql.types.{DecimalType, IntegerType, StringType}
 import spark.ParameterSet
 import spark.tools.MysqlProperties
 

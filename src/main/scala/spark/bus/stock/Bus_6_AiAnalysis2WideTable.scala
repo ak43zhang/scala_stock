@@ -1,14 +1,13 @@
-package spark.bus
+package spark.bus.stock
 
 import java.util.Properties
 
 import org.apache.spark.SparkConf
-import org.apache.spark.sql.functions._
-import org.apache.spark.sql.types._
+import org.apache.spark.sql.functions.{col, concat_ws, explode, from_json}
+import org.apache.spark.sql.types.{ArrayType, StringType, StructType}
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import spark.ParameterSet
 import spark.tools.MysqlProperties
-import sparktask.tools.MysqlTools
 
 /**
  * 总线6
@@ -30,7 +29,7 @@ object Bus_6_AiAnalysis2WideTable {
       // 增加shuffle分区数
       .set("spark.sql.shuffle.partitions", "10")
       .set("spark.sql.broadcastTimeout","60000")
-      .set("spark.driver.memory", "6g")
+      .set("spark.driver.memory", "2g")
       // 增加JDBC并行任务数
       .set("spark.jdbc.parallelism", "10")
       .set("spark.local.dir", "D:\\SparkTemp")

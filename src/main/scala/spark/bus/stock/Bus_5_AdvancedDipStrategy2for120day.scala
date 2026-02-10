@@ -1,17 +1,15 @@
-package spark.bus
+package spark.bus.stock
 
 import java.math.BigDecimal
 import java.util.Properties
 
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.types._
+import org.apache.spark.sql.types.{DecimalType, IntegerType, StringType}
 import spark.ParameterSet
 import spark.tools.MysqlProperties
 
 /**
- * 总线5
- *
  * 工业级低吸策略压力支撑位分析系统（注释增强版）
  *
  * 核心功能：
@@ -25,7 +23,7 @@ import spark.tools.MysqlProperties
  * - 百分比字段：Decimal(10,2)（范围±999999.99%，满足金融场景需求）
  * - 缓冲区设置：支撑位+2%，压力位-2%（防止价格波动误判）
  */
-object Bus_5_AdvancedDipStrategy {
+object Bus_5_AdvancedDipStrategy2for120day {
 
   // 输入数据结构（全量压力支撑位数据）
   case class StockData(
@@ -139,29 +137,31 @@ object Bus_5_AdvancedDipStrategy {
 
     spark.sparkContext.setLogLevel("ERROR")  // 屏蔽非关键日志
 
-    ad(spark,properties)
+    ad120(spark,properties)
 
     spark.stop()
   }
 
-  def ad(spark:SparkSession,properties: Properties): Unit ={
+  def ad120(spark:SparkSession,properties: Properties): Unit ={
     val url = properties.getProperty("url")
-    val outputPath = s"file:///D:\\${ParameterSet.data_content}\\pressure_support_calculator\\valid_results_pressure_advanced_dip_strategy"
+    val outputPath = s"file:///D:\\${ParameterSet.data_content}\\pressure_support_calculator\\valid_results_pressure_advanced_dip_strategy120"
     import spark.implicits._
 
     // 阶段0：数据加载与清洗
-    val stockDF  = spark.read.jdbc(url, "pressure_support_calculator2025", properties)
-      .union(spark.read.jdbc(url, "pressure_support_calculator2026", properties))
-      .union(spark.read.jdbc(url, "pressure_support_calculator2024", properties))
-//      .union(spark.read.jdbc(url, "pressure_support_calculator2023", properties))
-//      .union(spark.read.jdbc(url, "pressure_support_calculator2022", properties))
-//      .union(spark.read.jdbc(url, "pressure_support_calculator2021", properties))
-//      .union(spark.read.jdbc(url, "pressure_support_calculator2020", properties))
-//      .union(spark.read.jdbc(url, "pressure_support_calculator2019", properties))
-//      .union(spark.read.jdbc(url, "pressure_support_calculator2018", properties))
-//      .union(spark.read.jdbc(url, "pressure_support_calculator2017", properties))
-//      .union(spark.read.jdbc(url, "pressure_support_calculator2016", properties))
-//      .union(spark.read.jdbc(url, "pressure_support_calculator2015", properties))
+    val stockDF  = spark.read.jdbc(url, "pressure_support_calculatorfor120_2024", properties)
+      .union(spark.read.jdbc(url, "pressure_support_calculatorfor120_2025", properties))
+      .union(spark.read.jdbc(url, "pressure_support_calculatorfor120_2026", properties))
+      //      spark.read.jdbc(url, "pressure_support_calculatorfor120_2015", properties)
+      //      .union(spark.read.jdbc(url, "pressure_support_calculatorfor120_2016", properties))
+      //      .union(spark.read.jdbc(url, "pressure_support_calculatorfor120_2017", properties))
+      //      .union(spark.read.jdbc(url, "pressure_support_calculatorfor120_2018", properties))
+      //      .union(spark.read.jdbc(url, "pressure_support_calculatorfor120_2019", properties))
+      //      .union(spark.read.jdbc(url, "pressure_support_calculatorfor120_2020", properties))
+      //      .union(spark.read.jdbc(url, "pressure_support_calculatorfor120_2021", properties))
+      //      .union(spark.read.jdbc(url, "pressure_support_calculatorfor120_2022", properties))
+      //      .union(spark.read.jdbc(url, "pressure_support_calculatorfor120_2023", properties))
+      //      .union(spark.read.jdbc(url, "pressure_support_calculatorfor120_2024", properties))
+      //      .union(spark.read.jdbc(url, "pressure_support_calculatorfor120_2025", properties))
 
       .distinct()
       .select(
@@ -276,4 +276,5 @@ object Bus_5_AdvancedDipStrategy {
       //        .where("trade_time='2025-02-11'")
 //      .groupBy($"windowSize").agg(count($"windowSize")).show()
   }
+
 }

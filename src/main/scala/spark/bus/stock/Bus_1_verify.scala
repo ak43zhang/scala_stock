@@ -1,4 +1,4 @@
-package spark.bus
+package spark.bus.stock
 
 import java.time.format.DateTimeFormatter
 import java.time.{DayOfWeek, LocalDate, LocalTime}
@@ -9,7 +9,6 @@ import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.storage.StorageLevel
 import spark.ParameterSet
 import spark.tools.MysqlProperties
-
 
 /**
  * 总线1
@@ -42,7 +41,7 @@ object Bus_1_verify {
     val properties = MysqlProperties.getMysqlProperties()
 
     val year = "2026"
-    
+
     create_table(spark,properties,year)
 
     val now_day = getFinalDate

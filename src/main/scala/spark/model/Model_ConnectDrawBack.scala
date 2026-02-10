@@ -24,9 +24,9 @@ import scala.collection.mutable.ArrayBuffer
  */
 object Model_ConnectDrawBack {
 
-  val start_time ="2026-02-06"
+  val start_time ="2026-02-10"
 //  val start_time ="2025-12-25"
-  val end_time ="2026-02-06"
+  val end_time ="2026-02-10"
 
   def main(args: Array[String]): Unit = {
     val conf = new SparkConf()
