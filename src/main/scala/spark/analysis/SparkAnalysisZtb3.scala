@@ -54,8 +54,8 @@ object SparkAnalysisZtb3 {
 
     val startm = System.currentTimeMillis()
 
-    val start_time ="2026-02-09"
-    val end_time ="2026-02-09"
+    val start_time ="2026-02-11"
+    val end_time ="2026-02-11"
 
     // 涨停板dataframe
     val ztb_df: DataFrame = spark.read.jdbc(url, "ztb_day", properties)

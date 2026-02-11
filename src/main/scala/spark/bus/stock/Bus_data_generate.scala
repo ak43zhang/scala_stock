@@ -37,23 +37,23 @@ object Bus_data_generate {
 
     //参数设置
     val jyrlsSome = ArrayBuffer(
-      "data_gpsj_day_20260209"
+      "data_gpsj_day_20260210"
     )
     val months = "2025-12,2026-01,2026-02"
-    val start_time ="2026-02-09"
-    val end_time ="2026-02-09"
+    val start_time ="2026-02-10"
+    val end_time ="2026-02-10"
 
-//    Bus_2_SparkCollectMySql2ParquetIncrement.updateGpsjIncrement(Bus_2_SparkCollectMySql2ParquetIncrement.updateGpsj(spark,jyrlsSome,properties))
+    Bus_2_SparkCollectMySql2ParquetIncrement.updateGpsjIncrement(Bus_2_SparkCollectMySql2ParquetIncrement.updateGpsj(spark,jyrlsSome,properties))
     Bus_3_SparkMakeWideTableIncrement.makeWide(spark,months)
 
-//    Bus_4_PressureSupportCalculator.psc(spark,properties,start_time,end_time)
-//    Bus_5_AdvancedDipStrategy.ad(spark,properties)
-//
-//    Bus_4_PressureSupportCalculator2for40day.psc40(spark,properties,start_time,end_time)
-//    Bus_5_AdvancedDipStrategy2for40day.ad40(spark,properties)
-//
-//    Bus_4_PressureSupportCalculator2for120day.psc120(spark,properties,start_time,end_time)
-//    Bus_5_AdvancedDipStrategy2for120day.ad120(spark,properties)
+    Bus_4_PressureSupportCalculator.psc(spark,properties,start_time,end_time)
+    Bus_5_AdvancedDipStrategy.ad(spark,properties)
+
+    Bus_4_PressureSupportCalculator2for40day.psc40(spark,properties,start_time,end_time)
+    Bus_5_AdvancedDipStrategy2for40day.ad40(spark,properties)
+
+    Bus_4_PressureSupportCalculator2for120day.psc120(spark,properties,start_time,end_time)
+    Bus_5_AdvancedDipStrategy2for120day.ad120(spark,properties)
 
 //    analysis_news2Parquet(spark,properties)
 //    analysis_notices2Parquet(spark,properties)
