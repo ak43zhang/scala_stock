@@ -149,14 +149,14 @@ object Bus_5_AdvancedDipStrategy2for40day {
 
     // 阶段0：数据加载与清洗
     val stockDF  = spark.read.jdbc(url, "pressure_support_calculatorfor40_2024", properties)
-//      .union(spark.read.jdbc(url, "pressure_support_calculatorfor40_2016", properties))
-//      .union(spark.read.jdbc(url, "pressure_support_calculatorfor40_2017", properties))
-//      .union(spark.read.jdbc(url, "pressure_support_calculatorfor40_2018", properties))
-//      .union(spark.read.jdbc(url, "pressure_support_calculatorfor40_2019", properties))
-//      .union(spark.read.jdbc(url, "pressure_support_calculatorfor40_2020", properties))
-//      .union(spark.read.jdbc(url, "pressure_support_calculatorfor40_2021", properties))
-//      .union(spark.read.jdbc(url, "pressure_support_calculatorfor40_2022", properties))
-//      .union(spark.read.jdbc(url, "pressure_support_calculatorfor40_2023", properties))
+      .union(spark.read.jdbc(url, "pressure_support_calculatorfor40_2016", properties))
+      .union(spark.read.jdbc(url, "pressure_support_calculatorfor40_2017", properties))
+      .union(spark.read.jdbc(url, "pressure_support_calculatorfor40_2018", properties))
+      .union(spark.read.jdbc(url, "pressure_support_calculatorfor40_2019", properties))
+      .union(spark.read.jdbc(url, "pressure_support_calculatorfor40_2020", properties))
+      .union(spark.read.jdbc(url, "pressure_support_calculatorfor40_2021", properties))
+      .union(spark.read.jdbc(url, "pressure_support_calculatorfor40_2022", properties))
+      .union(spark.read.jdbc(url, "pressure_support_calculatorfor40_2023", properties))
       .union(spark.read.jdbc(url, "pressure_support_calculatorfor40_2025", properties))
       .union(spark.read.jdbc(url, "pressure_support_calculatorfor40_2026", properties))
 

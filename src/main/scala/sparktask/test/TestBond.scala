@@ -44,7 +44,24 @@ object TestBond {
       .select("代码","现价","规模","剩余规模","强赎触发比","强赎触发价","转股价","正股价","强赎价")
 
     val filteredResults = filterConvertibleBonds(bond_df, bond_qs_df)
-    filteredResults.show(1000)
+      .select("债券代码","债券简称","正股代码","正股简称","债现价")
+    filteredResults.createOrReplaceTempView("zq")
+
+//    filteredResults.show(1000)
+
+    // 行业板块dataframe
+    val hybk_df = spark.read.jdbc(url,"data_industry_code_component_ths",properties)
+    hybk_df.createOrReplaceTempView("hybk")
+    val zq_hybk_df = spark.sql(
+      """
+        |select * from zq left join hybk on zq.`正股代码`=hybk.stock_code
+        |""".stripMargin)
+    zq_hybk_df.show(1000,false)
+
+    zq_hybk_df
+      .where("name in ('电网设备')")
+      .show(1000,false)
+
 
     val endm = System.currentTimeMillis()
     println("共耗时：" + (endm - startm) / 1000 + "秒")
@@ -76,48 +93,48 @@ object TestBond {
 
     // 1. 第一层滤网：价格与溢价率风险
     val filter1 = dfWithCalculations.filter(
-      (col("b.现价").lt(200) && col("a.转股溢价率").lt(50) && col("a.转股溢价率").gt(0))
+      (col("b.现价").lt(200) && col("a.转股溢价率").lt(50) && col("a.转股溢价率").gt(-50))
     )
 
     // 2. 第二层滤网：强赎与条款风险（使用动态计算值）
     // 过滤条件：计算出的强赎触发比 < 0.85 或 无法计算该比率
-    val filter2 = filter1.filter(col("calc_强赎触发比").isNull || col("calc_强赎触发比").lt(0.85))
+    val filter2 = filter1.filter(col("calc_强赎触发比").isNull || col("calc_强赎触发比").leq(0.85))
 
     // 3. 第三层滤网：流动性风险
     val filter3 = filter2.filter(
       col("b.剩余规模").geq(1.0)
     )
 
-    // 4. 【优化核心】第四层滤网：专业期限与弹性抗风险过滤
-    val filter4 = filter3
-      // 4.1 严格规避临期债：基于上市时间推算剩余年限
-      // 假设“a.上市时间”字段格式为“yyyy-MM-dd”，计算距今是否大于2年
-//      .filter(col("剩余年限").geq(1.5) || col("剩余年限").isNull) // 剔除剩余<2年或日期异常的债
-
-      // 4.2 精准评估转股价值区间：剔除“股债双杀”和“强赎临界”品种
-      .filter(col("calc_转股价值").between(90, 125)) // 最佳弹性区间
-        // 转股价值90-125元的债：
-        // >90：有足够股性跟随上涨，避免纯债性品种反应迟钝
-        // <125：远离130元的强赎线，留有安全空间
-
-      // 4.3 动态规模稳定性检查：警惕大规模转股后的流动性萎缩
-      .filter(col("calc_规模缩减比").geq(0.3))
-      // 剩余规模不足发行规模30%的债，可能已被大量转股，
-      // 流动性会快速下降，且发行人强促转股意愿强烈
-
-      // 4.4 基于市场状态的溢价率弹性过滤（专业核心）
-      // 原则：牛市看股性（溢价率可稍高），熊市看债性（溢价率要低且价格要低）
-      // 此处以“转股价值”作为市场情绪的代理变量
-//      .filter(
-//        when(col("calc_转股价值") < 105,  // 市场偏弱，执行严格标准
-//          col("b.现价") < 115 && col("a.转股溢价率") < 25)
-//          .otherwise( // 市场偏强，可适度放宽
-//            col("a.转股溢价率") < 35)
-//      )
-
-      // 4.5 （可选高级项）规避“高价格+低转股价值”的估值陷阱
-      // 此类债价格已透支，但正股未跟上，风险极高
-//      .filter(!(col("b.现价") > 120 && col("calc_转股价值") < 105))
+//    // 4. 【优化核心】第四层滤网：专业期限与弹性抗风险过滤
+//    val filter4 = filter3
+//      // 4.1 严格规避临期债：基于上市时间推算剩余年限
+//      // 假设“a.上市时间”字段格式为“yyyy-MM-dd”，计算距今是否大于2年
+////      .filter(col("剩余年限").geq(1.5) || col("剩余年限").isNull) // 剔除剩余<2年或日期异常的债
+//
+//      // 4.2 精准评估转股价值区间：剔除“股债双杀”和“强赎临界”品种
+//      .filter(col("calc_转股价值").between(90, 125)) // 最佳弹性区间
+//        // 转股价值90-125元的债：
+//        // >90：有足够股性跟随上涨，避免纯债性品种反应迟钝
+//        // <125：远离130元的强赎线，留有安全空间
+//
+//      // 4.3 动态规模稳定性检查：警惕大规模转股后的流动性萎缩
+//      .filter(col("calc_规模缩减比").geq(0.3))
+//      // 剩余规模不足发行规模30%的债，可能已被大量转股，
+//      // 流动性会快速下降，且发行人强促转股意愿强烈
+//
+//      // 4.4 基于市场状态的溢价率弹性过滤（专业核心）
+//      // 原则：牛市看股性（溢价率可稍高），熊市看债性（溢价率要低且价格要低）
+//      // 此处以“转股价值”作为市场情绪的代理变量
+////      .filter(
+////        when(col("calc_转股价值") < 105,  // 市场偏弱，执行严格标准
+////          col("b.现价") < 115 && col("a.转股溢价率") < 25)
+////          .otherwise( // 市场偏强，可适度放宽
+////            col("a.转股溢价率") < 35)
+////      )
+//
+//      // 4.5 （可选高级项）规避“高价格+低转股价值”的估值陷阱
+//      // 此类债价格已透支，但正股未跟上，风险极高
+////      .filter(!(col("b.现价") > 120 && col("calc_转股价值") < 105))
 
 
     /*dfWithCalculations.show(1000)
@@ -127,7 +144,7 @@ object TestBond {
     println(filter3.count())
     println(filter4.count())*/
     // 返回最终筛选结果
-    filter4
+    filter3
   }
 
 

@@ -32,7 +32,7 @@ object SendEmail_ztb {
 
     spark.sparkContext.setLogLevel("ERROR")
 
-    val send_ztb_date = "2026-02-10"
+    val send_ztb_date = "2026-03-04"
 
     send_email(spark,send_ztb_date)
 

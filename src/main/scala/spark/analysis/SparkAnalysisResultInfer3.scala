@@ -52,8 +52,8 @@ object SparkAnalysisResultInfer3 {
      * 结果表数据  result_df
      */
 
-    val start_time ="2021-01-01"
-    val end_time ="2026-02-05"
+    val start_time ="2026-01-01"
+    val end_time ="2026-03-01"
 
     var df:DataFrame = null
     for(i<-1 to 1){
@@ -147,33 +147,22 @@ object SparkAnalysisResultInfer3 {
 
       val dr_where =
         s"""
-           |buy_date like '%${jyrl}%'
-           |and t0_stzf<3
-           |and t1_kpzf<=3
-           |and zdf<=-6
-           |and support_ratio*pressure_ratio<13500
-           |and t1_zgzf<11
-           |
-           |and (fxdx_lk not like '%重大%' or fxdx_lk is null)
-           |and (total_score<=15 or total_score is null)
-           |and levels not like '%5%'
-           |and `连续涨停天数`<=1
-           |$sczt_time_count
-           |$rd_count
-           |""".stripMargin
+            |buy_date like '%${jyrl}%'
+            |$rd_count
+            |and t0_zgzf<3
+            |and t0_stzf<3
+            |and support_ratio*pressure_ratio<14000
 
-      //      spark.sql(
-      //        s"""
-      //           |select *,
-      //           |   row_number() over(partition by buy_date order by `首次涨停时间`) as row_NUM
-      //           |from `${table_name}`
-      //           |where ${dr_where}
-      //
-      //           |and (t1_sfzt=1 or t1_cjzt=1)
-      //           |order by buy_date
-      //           |""".stripMargin)
-      //        .where(s"row_num=1 AND $column<=1.11") //   support_ratio*pressure_ratio<15000
-      //        .createOrReplaceTempView("ct")
+            |and (fxdx_lk not like '%重大%' or fxdx_lk is null)
+            |and (total_score<=15 or total_score is null)
+            |and levels not like '%5%'
+
+            |and t1_kpzf<=3
+            |and zdf<=4
+            |and t1_zgzf<10.2
+            |and `连续涨停天数`<=2
+            |$sczt_time_count
+		    |""".stripMargin
 
       val mid_df = spark.sql(
         s"""
@@ -189,7 +178,7 @@ object SparkAnalysisResultInfer3 {
 
 
 
-      mid_df.where(s"row_num=1 AND $column<=1.11") //   support_ratio*pressure_ratio<15000
+      mid_df.where(s" $column<=1.11") // row_num=1 AND   support_ratio*pressure_ratio<15000
         .createOrReplaceTempView("ct")
 
       /**
@@ -243,8 +232,14 @@ object SparkAnalysisResultInfer3 {
 
     detail_assemble_df.createOrReplaceTempView("detail_assemble_df")
     println("================================================================detail_assemble_df")
+
     spark.sql(
-      """select * from detail_assemble_df order by buy_date""".stripMargin).show(1000)
+      """select `代码`,`股票简称`,max_date,buy_date,zdf,`连续涨停天数`,`首次涨停时间`,result from detail_assemble_df order by buy_date""".stripMargin)
+      .show(1000)
+
+    spark.sql(
+      """select * from detail_assemble_df order by buy_date""".stripMargin)
+      .show(1000)
 
     spark.sql(s"""select count(1),
                  |  sum(if($column>=1,1,0)) as win_count,

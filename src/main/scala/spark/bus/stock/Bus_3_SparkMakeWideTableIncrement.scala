@@ -25,6 +25,7 @@ object Bus_3_SparkMakeWideTableIncrement {
       // 增加JDBC并行任务数
       .set("spark.jdbc.parallelism", "10")
       .set("spark.local.dir","D:\\SparkTemp")
+      .set("spark.sql.parquet.enableVectorizedReader", "false")
 
     val spark = SparkSession
       .builder()
@@ -32,11 +33,13 @@ object Bus_3_SparkMakeWideTableIncrement {
       .config(conf)
       .getOrCreate()
 
+
+
     spark.sparkContext.setLogLevel("ERROR")
     val startm = System.currentTimeMillis()
 
     //制作增量宽表的路径gsdata
-    val months = "2025-10,2025-11,2025-12"
+    val months = "2014-11,2014-12,2015-01"
     makeWide(spark,months)
 
     val endm = System.currentTimeMillis()
@@ -99,7 +102,7 @@ object Bus_3_SparkMakeWideTableIncrement {
     df5.createTempView("ta5")
 
     spark.sql("select * from ta5")
-      .repartition(8).write.mode("overwrite").partitionBy("trade_date_month")
+      .repartition(1).write.mode("overwrite").partitionBy("trade_date_month")
       .parquet(s"file:///D:\\${ParameterSet.data_content}\\gpsj_hs_10days_increment")
 
     //TODO 更新三个数据集除第一个月的数据的其他数据

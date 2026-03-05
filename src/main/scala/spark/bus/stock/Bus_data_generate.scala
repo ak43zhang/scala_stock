@@ -16,6 +16,7 @@ object Bus_data_generate {
     val conf = new SparkConf()
       .setMaster("local[*]")
       .set("spark.io.compression.codec", "snappy")
+//      .set("spark.sql.parquet.enableVectorizedReader", "false")
       .set("spark.sql.crossJoin.enabled", "true")
       // 增加shuffle分区数
       .set("spark.sql.shuffle.partitions", "10")
@@ -37,11 +38,11 @@ object Bus_data_generate {
 
     //参数设置
     val jyrlsSome = ArrayBuffer(
-      "data_gpsj_day_20260210"
+      "data_gpsj_day_20260304"
     )
-    val months = "2025-12,2026-01,2026-02"
-    val start_time ="2026-02-10"
-    val end_time ="2026-02-10"
+    val months = "2026-01,2026-02,2026-03"
+    val start_time ="2026-03-04"
+    val end_time ="2026-03-04"
 
     Bus_2_SparkCollectMySql2ParquetIncrement.updateGpsjIncrement(Bus_2_SparkCollectMySql2ParquetIncrement.updateGpsj(spark,jyrlsSome,properties))
     Bus_3_SparkMakeWideTableIncrement.makeWide(spark,months)

@@ -149,19 +149,18 @@ object Bus_5_AdvancedDipStrategy2for120day {
 
     // 阶段0：数据加载与清洗
     val stockDF  = spark.read.jdbc(url, "pressure_support_calculatorfor120_2024", properties)
-      .union(spark.read.jdbc(url, "pressure_support_calculatorfor120_2025", properties))
-      .union(spark.read.jdbc(url, "pressure_support_calculatorfor120_2026", properties))
-      //      spark.read.jdbc(url, "pressure_support_calculatorfor120_2015", properties)
-      //      .union(spark.read.jdbc(url, "pressure_support_calculatorfor120_2016", properties))
-      //      .union(spark.read.jdbc(url, "pressure_support_calculatorfor120_2017", properties))
-      //      .union(spark.read.jdbc(url, "pressure_support_calculatorfor120_2018", properties))
-      //      .union(spark.read.jdbc(url, "pressure_support_calculatorfor120_2019", properties))
-      //      .union(spark.read.jdbc(url, "pressure_support_calculatorfor120_2020", properties))
-      //      .union(spark.read.jdbc(url, "pressure_support_calculatorfor120_2021", properties))
-      //      .union(spark.read.jdbc(url, "pressure_support_calculatorfor120_2022", properties))
-      //      .union(spark.read.jdbc(url, "pressure_support_calculatorfor120_2023", properties))
-      //      .union(spark.read.jdbc(url, "pressure_support_calculatorfor120_2024", properties))
-      //      .union(spark.read.jdbc(url, "pressure_support_calculatorfor120_2025", properties))
+//            .union(spark.read.jdbc(url, "pressure_support_calculatorfor120_2015", properties))
+//            .union(spark.read.jdbc(url, "pressure_support_calculatorfor120_2016", properties))
+//            .union(spark.read.jdbc(url, "pressure_support_calculatorfor120_2017", properties))
+//            .union(spark.read.jdbc(url, "pressure_support_calculatorfor120_2018", properties))
+//            .union(spark.read.jdbc(url, "pressure_support_calculatorfor120_2019", properties))
+//            .union(spark.read.jdbc(url, "pressure_support_calculatorfor120_2020", properties))
+//            .union(spark.read.jdbc(url, "pressure_support_calculatorfor120_2021", properties))
+//            .union(spark.read.jdbc(url, "pressure_support_calculatorfor120_2022", properties))
+//            .union(spark.read.jdbc(url, "pressure_support_calculatorfor120_2023", properties))
+            .union(spark.read.jdbc(url, "pressure_support_calculatorfor120_2025", properties))
+            .union(spark.read.jdbc(url, "pressure_support_calculatorfor120_2026", properties))
+
 
       .distinct()
       .select(

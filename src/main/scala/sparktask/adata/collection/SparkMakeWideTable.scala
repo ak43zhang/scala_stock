@@ -13,10 +13,10 @@ object SparkMakeWideTable {
       .set("spark.io.compression.codec", "snappy")
       .set("spark.sql.crossJoin.enabled", "true")
       // 增加shuffle分区数
-      .set("spark.sql.shuffle.partitions","10")
-      .set("spark.driver.memory","8g")
+      .set("spark.sql.shuffle.partitions","200")
+      .set("spark.driver.memory","12g")
       // 增加JDBC并行任务数
-      .set("spark.jdbc.parallelism", "10")
+      .set("spark.jdbc.parallelism", "16")
       .set("spark.local.dir","D:\\SparkTemp")
 
     val spark = SparkSession
@@ -28,11 +28,11 @@ object SparkMakeWideTable {
     spark.sparkContext.setLogLevel("ERROR")
     val startm = System.currentTimeMillis()
 
-    val df2 = spark.read.parquet("file:///D:\\gsdata\\gpsj_day_all_hs")
+    val df2 = spark.read.parquet("file:///D:\\gsdata3\\gpsj_day_all_hs")
     df2.cache()
     df2.createTempView("ta2")
 
-    val df3 = spark.sql("select *,row_number() over(partition by stock_code order by trade_date,stock_code) as row from ta2 ")
+    val df3 = spark.sql("select *,row_number() over(partition by stock_code order by trade_date) as row from ta2 ")
     df3.cache()
     df3.createTempView("ta3")
 
@@ -81,74 +81,19 @@ object SparkMakeWideTable {
       df5.createTempView("ta5")
 //      df5.show()
     spark.sql("select * from ta5")
-      .repartition(8).write.mode("overwrite").partitionBy("trade_date_month").parquet("file:///D:\\gsdata\\gpsj_hs_10days")
+      .coalesce(8).write.mode("overwrite").partitionBy("trade_date_month")
+      .parquet("file:///D:\\gsdata3\\gpsj_hs_10days")
 
-    val df6 = spark.sql(
-      """|select t0.stock_code,substring(t0.trade_date,0,7) as trade_date_month,t0.trade_date as t0_trade_date,
-         |t10.trade_date as t10_trade_date,t10.bk as t10_bk,t10.sfzt as t10_sfzt,t10.cjzt as t10_cjzt, t10.open as t10_open , t10.close as t10_close ,t10.high as t10_high,t10.low as t10_low,t10.kpzf as t10_kpzf,t10.spzf as t10_spzf,t10.zgzf as t10_zgzf,t10.zdzf as t10_zdzf,t10.volume as t10_volume,t10.amount as t10_amount,t10.pre_close as t10_pre_close,t10.qjzf as t10_qjzf,t10.stzf as t10_stzf,t10.kxzt as t10_kxzt,t10.kp as t10_kp,t10.wp as t10_wp ,t10.sx as t10_sx,t10.xx as t10_xx,t10.ln as t10_ln,t10.zrlnb as t10_zrlnb,t10.turnover_ratio as t10_turnover_ratio,t10.change as t10_change,t10.change_pct as t10_change_pct,
-         |t11.trade_date as t11_trade_date,t11.bk as t11_bk,t11.sfzt as t11_sfzt,t11.cjzt as t11_cjzt, t11.open as t11_open , t11.close as t11_close ,t11.high as t11_high,t11.low as t11_low,t11.kpzf as t11_kpzf,t11.spzf as t11_spzf,t11.zgzf as t11_zgzf,t11.zdzf as t11_zdzf,t11.volume as t11_volume,t11.amount as t11_amount,t11.pre_close as t11_pre_close,t11.qjzf as t11_qjzf,t11.stzf as t11_stzf,t11.kxzt as t11_kxzt,t11.kp as t11_kp,t11.wp as t11_wp ,t11.sx as t11_sx,t11.xx as t11_xx,t11.ln as t11_ln,t11.zrlnb as t11_zrlnb,t11.turnover_ratio as t11_turnover_ratio,t11.change as t11_change,t11.change_pct as t11_change_pct,
-         |t12.trade_date as t12_trade_date,t12.bk as t12_bk,t12.sfzt as t12_sfzt,t12.cjzt as t12_cjzt, t12.open as t12_open , t12.close as t12_close ,t12.high as t12_high,t12.low as t12_low,t12.kpzf as t12_kpzf,t12.spzf as t12_spzf,t12.zgzf as t12_zgzf,t12.zdzf as t12_zdzf,t12.volume as t12_volume,t12.amount as t12_amount,t12.pre_close as t12_pre_close,t12.qjzf as t12_qjzf,t12.stzf as t12_stzf,t12.kxzt as t12_kxzt,t12.kp as t12_kp,t12.wp as t12_wp ,t12.sx as t12_sx,t12.xx as t12_xx,t12.ln as t12_ln,t12.zrlnb as t12_zrlnb,t12.turnover_ratio as t12_turnover_ratio,t12.change as t12_change,t12.change_pct as t12_change_pct,
-         |t13.trade_date as t13_trade_date,t13.bk as t13_bk,t13.sfzt as t13_sfzt,t13.cjzt as t13_cjzt, t13.open as t13_open , t13.close as t13_close ,t13.high as t13_high,t13.low as t13_low,t13.kpzf as t13_kpzf,t13.spzf as t13_spzf,t13.zgzf as t13_zgzf,t13.zdzf as t13_zdzf,t13.volume as t13_volume,t13.amount as t13_amount,t13.pre_close as t13_pre_close,t13.qjzf as t13_qjzf,t13.stzf as t13_stzf,t13.kxzt as t13_kxzt,t13.kp as t13_kp,t13.wp as t13_wp ,t13.sx as t13_sx,t13.xx as t13_xx,t13.ln as t13_ln,t13.zrlnb as t13_zrlnb,t13.turnover_ratio as t13_turnover_ratio,t13.change as t13_change,t13.change_pct as t13_change_pct,
-         |t14.trade_date as t14_trade_date,t14.bk as t14_bk,t14.sfzt as t14_sfzt,t14.cjzt as t14_cjzt, t14.open as t14_open , t14.close as t14_close ,t14.high as t14_high,t14.low as t14_low,t14.kpzf as t14_kpzf,t14.spzf as t14_spzf,t14.zgzf as t14_zgzf,t14.zdzf as t14_zdzf,t14.volume as t14_volume,t14.amount as t14_amount,t14.pre_close as t14_pre_close,t14.qjzf as t14_qjzf,t14.stzf as t14_stzf,t14.kxzt as t14_kxzt,t14.kp as t14_kp,t14.wp as t14_wp ,t14.sx as t14_sx,t14.xx as t14_xx,t14.ln as t14_ln,t14.zrlnb as t14_zrlnb,t14.turnover_ratio as t14_turnover_ratio,t14.change as t14_change,t14.change_pct as t14_change_pct,
-         |t15.trade_date as t15_trade_date,t15.bk as t15_bk,t15.sfzt as t15_sfzt,t15.cjzt as t15_cjzt, t15.open as t15_open , t15.close as t15_close ,t15.high as t15_high,t15.low as t15_low,t15.kpzf as t15_kpzf,t15.spzf as t15_spzf,t15.zgzf as t15_zgzf,t15.zdzf as t15_zdzf,t15.volume as t15_volume,t15.amount as t15_amount,t15.pre_close as t15_pre_close,t15.qjzf as t15_qjzf,t15.stzf as t15_stzf,t15.kxzt as t15_kxzt,t15.kp as t15_kp,t15.wp as t15_wp ,t15.sx as t15_sx,t15.xx as t15_xx,t15.ln as t15_ln,t15.zrlnb as t15_zrlnb,t15.turnover_ratio as t15_turnover_ratio,t15.change as t15_change,t15.change_pct as t15_change_pct,
-         |t16.trade_date as t16_trade_date,t16.bk as t16_bk,t16.sfzt as t16_sfzt,t16.cjzt as t16_cjzt, t16.open as t16_open , t16.close as t16_close ,t16.high as t16_high,t16.low as t16_low,t16.kpzf as t16_kpzf,t16.spzf as t16_spzf,t16.zgzf as t16_zgzf,t16.zdzf as t16_zdzf,t16.volume as t16_volume,t16.amount as t16_amount,t16.pre_close as t16_pre_close,t16.qjzf as t16_qjzf,t16.stzf as t16_stzf,t16.kxzt as t16_kxzt,t16.kp as t16_kp,t16.wp as t16_wp ,t16.sx as t16_sx,t16.xx as t16_xx,t16.ln as t16_ln,t16.zrlnb as t16_zrlnb,t16.turnover_ratio as t16_turnover_ratio,t16.change as t16_change,t16.change_pct as t16_change_pct,
-         |t17.trade_date as t17_trade_date,t17.bk as t17_bk,t17.sfzt as t17_sfzt,t17.cjzt as t17_cjzt, t17.open as t17_open , t17.close as t17_close ,t17.high as t17_high,t17.low as t17_low,t17.kpzf as t17_kpzf,t17.spzf as t17_spzf,t17.zgzf as t17_zgzf,t17.zdzf as t17_zdzf,t17.volume as t17_volume,t17.amount as t17_amount,t17.pre_close as t17_pre_close,t17.qjzf as t17_qjzf,t17.stzf as t17_stzf,t17.kxzt as t17_kxzt,t17.kp as t17_kp,t17.wp as t17_wp ,t17.sx as t17_sx,t17.xx as t17_xx,t17.ln as t17_ln,t17.zrlnb as t17_zrlnb,t17.turnover_ratio as t17_turnover_ratio,t17.change as t17_change,t17.change_pct as t17_change_pct,
-         |t18.trade_date as t18_trade_date,t18.bk as t18_bk,t18.sfzt as t18_sfzt,t18.cjzt as t18_cjzt, t18.open as t18_open , t18.close as t18_close ,t18.high as t18_high,t18.low as t18_low,t18.kpzf as t18_kpzf,t18.spzf as t18_spzf,t18.zgzf as t18_zgzf,t18.zdzf as t18_zdzf,t18.volume as t18_volume,t18.amount as t18_amount,t18.pre_close as t18_pre_close,t18.qjzf as t18_qjzf,t18.stzf as t18_stzf,t18.kxzt as t18_kxzt,t18.kp as t18_kp,t18.wp as t18_wp ,t18.sx as t18_sx,t18.xx as t18_xx,t18.ln as t18_ln,t18.zrlnb as t18_zrlnb,t18.turnover_ratio as t18_turnover_ratio,t18.change as t18_change,t18.change_pct as t18_change_pct,
-         |t19.trade_date as t19_trade_date,t19.bk as t19_bk,t19.sfzt as t19_sfzt,t19.cjzt as t19_cjzt, t19.open as t19_open , t19.close as t19_close ,t19.high as t19_high,t19.low as t19_low,t19.kpzf as t19_kpzf,t19.spzf as t19_spzf,t19.zgzf as t19_zgzf,t19.zdzf as t19_zdzf,t19.volume as t19_volume,t19.amount as t19_amount,t19.pre_close as t19_pre_close,t19.qjzf as t19_qjzf,t19.stzf as t19_stzf,t19.kxzt as t19_kxzt,t19.kp as t19_kp,t19.wp as t19_wp ,t19.sx as t19_sx,t19.xx as t19_xx,t19.ln as t19_ln,t19.zrlnb as t19_zrlnb,t19.turnover_ratio as t19_turnover_ratio,t19.change as t19_change,t19.change_pct as t19_change_pct
-
-         | from ta4 as t0
-         | left join ta4 as t10 on t0.row+10=t10.row and t0.stock_code=t10.stock_code
-         | left join ta4 as t11 on t0.row+11=t11.row and t0.stock_code=t11.stock_code
-         | left join ta4 as t12 on t0.row+12=t12.row and t0.stock_code=t12.stock_code
-         | left join ta4 as t13 on t0.row+13=t13.row and t0.stock_code=t13.stock_code
-         | left join ta4 as t14 on t0.row+14=t14.row and t0.stock_code=t14.stock_code
-         | left join ta4 as t15 on t0.row+15=t15.row and t0.stock_code=t15.stock_code
-         | left join ta4 as t16 on t0.row+16=t16.row and t0.stock_code=t16.stock_code
-         | left join ta4 as t17 on t0.row+17=t17.row and t0.stock_code=t17.stock_code
-         | left join ta4 as t18 on t0.row+18=t18.row and t0.stock_code=t18.stock_code
-         | left join ta4 as t19 on t0.row+19=t19.row and t0.stock_code=t19.stock_code
-
-         |""".stripMargin)
-
-
-    df6.cache()
-    df6.createTempView("ta6")
-//    df6.show()
-
-    spark.sql("select * from ta6")
-      .repartition(8).write.mode("overwrite").partitionBy("trade_date_month").parquet("file:///D:\\gsdata\\gpsj_hs_h10days")
-
-    all20days(spark)
 
     df2.unpersist()
     df3.unpersist()
     df4.unpersist()
     df5.unpersist()
-    df6.unpersist()
 
     val endm = System.currentTimeMillis()
     println("共耗时："+(endm-startm)/1000+"秒")
     spark.close()
   }
 
-  /**
-   * 20天为一个月基本开盘时间量
-   * @param spark
-   */
-  def all20days(spark:SparkSession)={
-    val df1 = spark.read.parquet("file:///D:\\gsdata\\gpsj_hs_10days").repartition(1000)
-    df1.createTempView("wt1")
 
-    val df2 = spark.read.parquet("file:///D:\\gsdata\\gpsj_hs_h10days").repartition(1000)
-    df2.createTempView("wt2")
-
-    val duplicateColumns = df1.columns.intersect(df2.columns)
-    val wt2str = df2.columns.diff(duplicateColumns).map(f=>"wt2."+f).mkString(",")
-
-    val df3 = spark.sql(s"select wt1.*,$wt2str  from wt1 left join wt2 on wt1.stock_code=wt2.stock_code and wt1.t0_trade_date=wt2.t0_trade_date")
-//      df3.show()
-      df3.repartition(6)
-      .write.mode("overwrite").partitionBy("trade_date_month").parquet("file:///D:\\gsdata\\gpsj_hs_20days")
-
-  }
 }

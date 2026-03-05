@@ -21,11 +21,13 @@ object SparkCollectMySql2Parquet {
       .set("spark.io.compression.codec", "snappy")
       .set("spark.sql.crossJoin.enabled", "true")
       // 增加shuffle分区数
-      .set("spark.sql.shuffle.partitions","10")
-      .set("spark.driver.memory","8g")
+      .set("spark.sql.shuffle.partitions","100")
+      .set("spark.driver.memory","12g")
       // 增加JDBC并行任务数
-      .set("spark.jdbc.parallelism", "10")
+      .set("spark.jdbc.parallelism", "8")
       .set("spark.local.dir","D:\\SparkTemp")
+      .set("spark.memory.fraction", "0.8")
+      .set("spark.memory.storageFraction", "0.3")
 
     val spark = SparkSession
       .builder()
@@ -35,10 +37,10 @@ object SparkCollectMySql2Parquet {
 
     spark.sparkContext.setLogLevel("ERROR")
 
-    val url = "jdbc:mysql://localhost:3306/gs"
+    val url = "jdbc:mysql://192.168.0.100:3306/gs"
     val properties = getMysqlProperties()
 
-    val jyrlsAll = ArrayBuffer("data2024_gpsj_day_20241213")
+    val jyrlsAll = ArrayBuffer("data_gpsj_day_all19900101")
 //    val jyrlsSome = ArrayBuffer("data2024_gpsj_day_0729")
 
     //    updateQ9H6V2Test(spark)
@@ -57,7 +59,7 @@ object SparkCollectMySql2Parquet {
   }
 
   def getMysqlProperties(): Properties ={
-    val url = "jdbc:mysql://localhost:3306/gs"
+    val url = "jdbc:mysql://192.168.0.100:3306/gs"
     val driver = "com.mysql.cj.jdbc.Driver"
     val user = "root"
     val pwd = "123456"
@@ -68,9 +70,9 @@ object SparkCollectMySql2Parquet {
     properties.setProperty("url", url)
     properties.setProperty("driver", driver)
     properties.setProperty("partitionColumn", "amount") // 选择一个分区列
-    properties.setProperty("lowerBound", "10000") // 分区列的最小值
-    properties.setProperty("upperBound", "1000000") // 分区列的最大值
-    properties.setProperty("numPartitions", "8") // 设置分区数量
+    properties.setProperty("lowerBound", "0") // 分区列的最小值
+    properties.setProperty("upperBound", "69991387080") // 分区列的最大值
+    properties.setProperty("numPartitions", "32") // 设置分区数量
     properties
   }
 
@@ -139,8 +141,8 @@ object SparkCollectMySql2Parquet {
       //获取agdm并标记ST股票
 //      var agdmdf:DataFrame = spark.read.jdbc(url, agdm, properties)
 
-      df_hs.distinct().repartition(1).write.mode("overwrite").partitionBy("trade_date_month")
-      .parquet("file:///D:\\gsdata\\gpsj_day_all_hs")
+      df_hs.distinct().coalesce(1).write.mode("overwrite").partitionBy("trade_date_month")
+      .parquet("file:///D:\\gsdata3\\gpsj_day_all_hs")
     val endm = System.currentTimeMillis()
     println("共耗时："+(endm-startm)/1000+"秒")
 

@@ -26,6 +26,8 @@ import scala.collection.mutable.ArrayBuffer
  *
  * 3、热度关联
  *
+ * 4、流动性
+ *
  */
 object SparkAnalysisZtb3 {
   def main(args: Array[String]): Unit = {
@@ -54,8 +56,11 @@ object SparkAnalysisZtb3 {
 
     val startm = System.currentTimeMillis()
 
-    val start_time ="2026-02-11"
-    val end_time ="2026-02-11"
+//    val start_time ="2020-01-01"
+//    val end_time ="2022-02-10"
+
+    val start_time ="2026-03-05"
+    val end_time ="2026-03-05"
 
     // 涨停板dataframe
     val ztb_df: DataFrame = spark.read.jdbc(url, "ztb_day", properties)
@@ -84,6 +89,7 @@ object SparkAnalysisZtb3 {
       "t1_close","t1_sfzt","t1_cjzt","t1_kxzt","t1_ln","t1_zrlnb","t1_qjzf","t1_stzf","t1_kpzf","t1_zgzf","t1_zdzf","t1_spzf",
       "t2_close","t2_sfzt","t2_cjzt","t2_kxzt","t2_ln","t2_zrlnb","t2_qjzf","t2_stzf","t2_kpzf","t2_zgzf","t2_zdzf","t2_spzf"
     )
+    println(getYearStr(start_time,end_time))
     val data20_df = spark.read.parquet(s"file:///D:\\${ParameterSet.data_content}\\gpsj_hs_10days\\trade_date_month=20[${getYearStr(start_time,end_time)}]*")
       .select(columnsList.map(col): _*)
     data20_df.persist(StorageLevel.MEMORY_AND_DISK_SER)
@@ -120,7 +126,6 @@ object SparkAnalysisZtb3 {
 
     val analysis_area_explode_df: DataFrame = spark.read.jdbc(url, "analysis_area_explode", properties)
     analysis_area_explode_df.createOrReplaceTempView("area")
-
     
     for (jyrl <- jyrls) {
       val startm = System.currentTimeMillis()
@@ -134,7 +139,7 @@ object SparkAnalysisZtb3 {
       val y_day = getPreviousDay(setdate)
       val yes_day_5 = date_list.toList(5)
       val n_day_ago = date_list.toList(20)
-      println(n_day_ago)
+//      println(n_day_ago)
       val year = setdate.substring(0,4)
       var nb_year = "'"+year+"'"
 //      if(setdate<year+"-03-31"){
@@ -205,18 +210,18 @@ object SparkAnalysisZtb3 {
       //风险数据sql+通达信风险数据
       //暂时未加入：业绩公告预警,累计经营现金流偏少,关联交易风险,高商誉风险,公司被监管警示,大股东离婚,子公司风险,公允价值收益异常,主力资金卖出,交易所监管,行政监管措施或处罚,公司被立案调查,高层协助有关机构调查,股东或子公司预重整,市盈率过高,募投项目延期,A股溢价过高,分析师评级下调,股价脚踝斩,拟大比例减持,可转债临近转股期,市净率过高,停牌次数多,十大股东总持股占比小,关联人员市场禁入,公司预重整,多元化经营风险,上市首日遭爆炒,年营收偏低,可能被*ST,会计师事务所变动,审计报告其他非标,净资产可能低于亏损,审计报告保留意见,分红不达标,定期报告存疑,*ST股票,财务造假,净资产偏低,资金占用或违规担保,股价偏低,可能终止上市,年报被问询,市值偏小,拟主动退市
       val risk_df = spark.sql(
-        """
+        s"""
           |(select `代码`,`风险类型` from venture_year)
           |union
           |(select `代码`,`风险类型` from venture)
           |union
           |(select stock_code as `代码`,concat('risk_',s_type) as `风险类型` from data_risk_tdx where f_type = 'ST风险和退市' and s_type not in ('年营收偏低','会计师事务所变动','审计报告其他非标','审计报告保留意见'))
           |union
-          |(select stock_code as `代码`,concat('risk_',s_type) as `风险类型` from data_risk_tdx where s_type = '财报亏损' and reason REGEXP '(?=.*亿)(?=.*2025)')
+          |(select stock_code as `代码`,concat('risk_',s_type) as `风险类型` from data_risk_tdx where s_type = '财报亏损' and reason REGEXP '(?=.*亿)(?=.*$year)')
           |union
           |(select  stock_code as `代码`,concat('risk_',s_type) as `风险类型`  from data_risk_tdx where s_type in ('控股股东高质押','长期不分红' ,'业绩变脸风险'  ,'大比例解禁' ,'股权分散' ,'失信被执行' ,'事故或停产' ,'未能如期披露财报' ,'银行账户被冻结' ,'高层或股东被立案调查' ,'清仓式减持' ,'债券违约' ,'理财风险' ,'补充质押' ) )
           |union
-          |(select stock_code as `代码`,concat('risk_',s_type) as `风险类型` from data_risk_tdx where s_type in ('高管人员偏少','应收账款占收入比例过高','短期负债风险','高应收款隐忧','高财务费用','扣非净利润陡降风险','非经常性损益占比过高','高负债率','经营现金流风险','最大供应商采购占比高','业绩骤减','高担保比例','高质押风险','营收陡降风险','多年扣非亏损','投资收益巨亏','最大客户占营收比过高','应收款增加,低现金流','应付债券占比高','已大比例减持','高库存隐忧','高层涉刑','营业外支出过大','负债率逐年递增','员工人数陡降','高预付款隐忧','研发费用减少','研发人员减少','被调出重要指数','员工人数偏少','毛利率偏低','高销售费用','货币资产充足仍举债','存货同比大幅增加','交易异常监管','被频繁问询监管','采购暂停或市场禁入','负面舆情','交易所警示','三费占营收比例高','控制权纠纷或争斗','股权冻结') and reason REGEXP '(?=.*2025)')
+          |(select stock_code as `代码`,concat('risk_',s_type) as `风险类型` from data_risk_tdx where s_type in ('高管人员偏少','应收账款占收入比例过高','短期负债风险','高应收款隐忧','高财务费用','扣非净利润陡降风险','非经常性损益占比过高','高负债率','经营现金流风险','最大供应商采购占比高','业绩骤减','高担保比例','高质押风险','营收陡降风险','多年扣非亏损','投资收益巨亏','最大客户占营收比过高','应收款增加,低现金流','应付债券占比高','已大比例减持','高库存隐忧','高层涉刑','营业外支出过大','负债率逐年递增','员工人数陡降','高预付款隐忧','研发费用减少','研发人员减少','被调出重要指数','员工人数偏少','毛利率偏低','高销售费用','货币资产充足仍举债','存货同比大幅增加','交易异常监管','被频繁问询监管','采购暂停或市场禁入','负面舆情','交易所警示','三费占营收比例高','控制权纠纷或争斗','股权冻结') and reason REGEXP '(?=.*$year)')
           |""".stripMargin)
       risk_df.where("`风险类型` not in ('股东大会','预约披露时间_巨潮资讯')")
         .createOrReplaceTempView("venture2")
@@ -241,8 +246,7 @@ object SparkAnalysisZtb3 {
       //      ps_df120.show()
       ps120_df.createOrReplaceTempView("ps120")
 
-      val ztb_xj_df = spark.sql(
-        s"""
+      val ztb_xj_sql = s"""
           select `股票代码`,`股票简称`,max_date,max(ztj) as ztj,max(xj) as xj,round((max(xj)-max(ztj))/max(ztj)*100,2) as zdf from
               (select ztb2.*,if(d2.t1_trade_date=ztb2.max_date,d2.t1_close,null) as ztj,if(d2.t1_trade_date='$yes_day',d2.t1_close,null) as xj,t2_spzf from
                   (select `股票代码`,`股票简称`,max(trade_date) as max_date from ztb
@@ -252,14 +256,15 @@ object SparkAnalysisZtb3 {
               on ztb2.`股票代码` = d2.`stock_code`)
           where ztj is not null or xj is not null
           group by `股票代码`,`股票简称`,max_date
-           """.stripMargin).orderBy("zdf")
+           """.stripMargin
+//      println(ztb_xj_sql)
+//      spark.sql(s"select * from data20_df where t1_trade_date>='$n_day_ago' and t1_trade_date<='$yes_day'")
+//        .orderBy("t1_trade_date").show(1000)
+      val ztb_xj_df = spark.sql(ztb_xj_sql).orderBy("zdf")
       println("========================================================================================ztb_xj_df")
-//            ztb_xj_df.show(20,false)
       //      println(ztb_xj_df.count())
       ztb_xj_df.createOrReplaceTempView("ztb_xj")
 
-
-      //where zdf<=-6.28
       val ztb_shuffer_df = spark.sql(
         """
           |select ztb_xj.*,ps40.*,
@@ -289,11 +294,13 @@ object SparkAnalysisZtb3 {
       // 关联风险表集合
       val risk2_df = spark.sql(
         s"""
-           select bqps.*,total_score,r2.levels_array,r2.fxlxs,concat_ws(',',levels_array) as levels from bqps left join
-             (select q1.`代码` as dm,`简称` as jc,SUM(level) AS total_score,collect_list(level) as levels_array,
-             concat_ws(',',collect_list(`风险类型`)) as fxlxs,'$setdate' as trade_date,'$yes_day' as yes_day
-             from basequery as q1 left join venture3 as q2 on q1.`代码`=q2.`代码`
-             group by q1.`代码`,`简称`) as r2 on bqps.`代码` = r2.dm and  bqps.trade_time=r2.yes_day
+           select bqps.*,total_score,r2.levels_array,r2.fxlxs,concat_ws(',',levels_array) as levels from bqps
+                left join
+                 (select q1.`代码` as dm,`简称` as jc,SUM(level) AS total_score,collect_list(level) as levels_array,
+                 concat_ws(',',collect_list(`风险类型`)) as fxlxs,'$setdate' as trade_date,'$yes_day' as yes_day
+                 from basequery as q1 left join venture3 as q2 on q1.`代码`=q2.`代码`
+                 group by q1.`代码`,`简称`) as r2
+             on bqps.`代码` = r2.dm and bqps.trade_time=r2.yes_day
            """.stripMargin)
       println("========================================================================================risk2_df")
 //      risk2_df.show(20,false)
@@ -349,9 +356,6 @@ object SparkAnalysisZtb3 {
        * if(support_ratio<163,1,0) as s,
        *
        */
-      //
-      //   and support_ratio<140
-
 
       val mid_df = spark.sql(
         s"""
@@ -383,9 +387,7 @@ object SparkAnalysisZtb3 {
           |""".stripMargin)
 
       println("========================================================================================result_df")
-//      result_df
-//        .where("t1.`代码`='600650'")
-//        .show(2000)
+//      result_df.show(20)
 
       println("========================================================================================filter_result_df")
 
@@ -400,19 +402,20 @@ object SparkAnalysisZtb3 {
           |buy_date like '%${jyrl}%'
           |${rd_count}
           |and t0_zgzf<3
-          |and support_ratio*pressure_ratio<15000
+          |and t0_stzf<3
+          |and support_ratio*pressure_ratio<14000
+
           |and (fxdx_lk not like '%重大%' or fxdx_lk is null)
           |and (total_score<=15 or total_score is null)
           |and levels not like '%5%'
-          |""".stripMargin).orderBy("zdf")
 
-//      filter_result_df.show(1000)
-      filter_result_df.orderBy("zdf")
-//        .select("代码","frequency")
-        .show(1000)
+          |""".stripMargin)
+        .orderBy("zdf")
 
+      filter_result_df.show(1000)
 
-
+//      filter_result_df.orderBy("zdf")
+//        .show(1000)
 
       val g8d_df = result_df
         .where("t1_sfzt=1 or t1_cjzt=1")
@@ -435,6 +438,7 @@ object SparkAnalysisZtb3 {
         // 通过 Spark 执行 SQL 删除语句
         // 编写 SQL 删除语句
         val deleteQuery = s"DELETE FROM $g8_table WHERE buy_date='$setdate'"
+//        println(deleteQuery)
         MysqlTools.mysqlEx(deleteQuery)
         println("数据删除成功！")
       } catch {

@@ -24,9 +24,8 @@ import scala.collection.mutable.ArrayBuffer
  */
 object Model_ConnectDrawBack {
 
-  val start_time ="2026-02-11"
-//  val start_time ="2025-12-25"
-  val end_time ="2026-02-11"
+  val start_time ="2026-03-05"
+  val end_time ="2026-03-05"
 
   def main(args: Array[String]): Unit = {
     val conf = new SparkConf()
@@ -60,8 +59,6 @@ object Model_ConnectDrawBack {
       .select("trade_date").collect().map(f => f.getAs[String]("trade_date")).toList
 
     for (jyrl <- jyrls) {
-      val startm = System.currentTimeMillis()
-
       val setdate = jyrl
       val date_list = spark.read.jdbc(url, "data_jyrl", properties).orderBy(col("trade_date").desc)
         .where(s"trade_status=1 and trade_date<'$jyrl'").collect().map(f => f.getAs[String]("trade_date"))
@@ -76,7 +73,9 @@ object Model_ConnectDrawBack {
       val sql =
         s"""
            |select a.`股票代码`,'${setdate}' as trade_date,'${yes_day}' as yes_date from
-           |   (select count(1) as c,sum(if(`几天几板`='首板涨停',1,0)) as qs,`股票代码` from ztb_day where trade_date between '${n_day_10}' and '${n_day_2}'  and `股票简称` not like '%ST%' group by `股票代码`  having c>=3 and qs<2 ) as a
+           |   (select count(1) as c,sum(if(`几天几板`='首板涨停',1,0)) as qs,`股票代码` from ztb_day
+           |        where trade_date between '${n_day_10}' and '${n_day_2}'  and `股票简称` not like '%ST%'
+           |        group by `股票代码`  having c>=3 and qs<2 ) as a
            |where not exists (select `股票代码` from ztb_day as b where trade_date ='${yes_day}' and a.`股票代码`= b.`股票代码` and `股票简称` not like '%ST%')
            |""".stripMargin
       println(sql)
@@ -90,11 +89,12 @@ object Model_ConnectDrawBack {
           |select * from z10 left join data20_df on z10.`股票代码` = data20_df.`stock_code` and z10.yes_date = data20_df.t7_trade_date
           |where stock_code is not null
           |""".stripMargin)
-        .orderBy(col("t7_zgzf").desc).drop("yes_date")
+        .orderBy(col("t7_zgzf").desc).drop("yes_date").where("t7_zgzf<2")
 
 //      res_df.select("t7_zgzf","t7_zdzf","t7_kpzf","t7_spzf").show(100)
 
-      res_df.where("t7_zgzf<2").show(100)
+      res_df.show(100)
+      //处理
 
       //刪除並更新g8（大于8个点的数据分析）
       val table_name = "model_connect_draw_back"

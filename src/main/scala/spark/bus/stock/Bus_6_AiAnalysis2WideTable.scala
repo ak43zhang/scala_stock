@@ -29,7 +29,7 @@ object Bus_6_AiAnalysis2WideTable {
       // 增加shuffle分区数
       .set("spark.sql.shuffle.partitions", "10")
       .set("spark.sql.broadcastTimeout","60000")
-      .set("spark.driver.memory", "2g")
+      .set("spark.driver.memory", "4g")
       // 增加JDBC并行任务数
       .set("spark.jdbc.parallelism", "10")
       .set("spark.local.dir", "D:\\SparkTemp")
@@ -78,6 +78,9 @@ object Bus_6_AiAnalysis2WideTable {
 
     val messageSchema = new StructType()
       .add("消息id", StringType)
+      .add("重要程度评分", StringType)
+      .add("业务影响维度评分", StringType)
+      .add("综合评分", StringType)
       .add("板块详情", ArrayType(sectorDetailSchema))
       .add("消息大小", StringType)
       .add("消息类型", StringType)
@@ -97,6 +100,9 @@ object Bus_6_AiAnalysis2WideTable {
       .select(
         col("table_name"),
         $"message.消息id".as("消息id"),
+        $"message.重要程度评分".as("重要程度评分"),
+        $"message.业务影响维度评分".as("业务影响维度评分"),
+        $"message.综合评分".as("综合评分"),
         $"message.消息大小".as("消息大小"),
         $"message.消息类型".as("消息类型"),
         concat_ws(",", $"message.涉及板块").as("涉及板块"),
@@ -106,6 +112,9 @@ object Bus_6_AiAnalysis2WideTable {
       .select(
         $"table_name",
         $"消息id",
+        $"重要程度评分",
+        $"业务影响维度评分",
+        $"综合评分",
         $"消息大小",
         $"消息类型",
         $"涉及板块",
@@ -116,6 +125,9 @@ object Bus_6_AiAnalysis2WideTable {
       .select(
         $"table_name",
         $"消息id",
+        $"重要程度评分",
+        $"业务影响维度评分",
+        $"综合评分",
         $"消息大小",
         $"消息类型",
         $"涉及板块",
@@ -251,9 +263,12 @@ object Bus_6_AiAnalysis2WideTable {
         |    xxjh_exploded.`涉及板块` AS `涉及板块`,
         |    xxjh_exploded.`简要描述` AS `简要描述`,
         |    xxjh_exploded.`股票代码` AS `股票代码`,
-        |    xxjh_exploded.`原因分析` AS `原因分析`
+        |    xxjh_exploded.`原因分析` AS `原因分析`,
+        |    xxjh_exploded.`重要程度评分` AS `重要程度评分`,
+        |    xxjh_exploded.`业务影响维度评分` AS `业务影响维度评分`,
+        |    xxjh_exploded.`综合评分` AS `综合评分`
         |FROM (select news_date,main_area,child_area,
-        |from_json(get_json_object(json_data, '$.消息集合'),'ARRAY<STRUCT<`主领域`: STRING,`关键事件`: STRING,`利空利好`: STRING,`子领域`: STRING,`时间`: STRING,`涉及板块`: STRING,`简要描述`: STRING, `股票代码`:STRING, `原因分析`:STRING, `消息大小`:STRING>>') AS xxjh
+        |from_json(get_json_object(json_data, '$.消息集合'),'ARRAY<STRUCT<`主领域`: STRING,`关键事件`: STRING,`利空利好`: STRING,`子领域`: STRING,`时间`: STRING,`涉及板块`: STRING,`简要描述`: STRING, `股票代码`:STRING, `原因分析`:STRING, `消息大小`:STRING, `重要程度评分`:STRING, `业务影响维度评分`:STRING, `综合评分`:STRING>>') AS xxjh
         | from area)
         |LATERAL VIEW EXPLODE(xxjh) exploded_table AS xxjh_exploded
         |

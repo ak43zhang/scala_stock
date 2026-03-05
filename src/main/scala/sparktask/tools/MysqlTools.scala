@@ -9,7 +9,7 @@ object MysqlTools {
    */
   def mysqlEx(query:String): Unit ={
     // 配置 MySQL 连接信息
-    val jdbcUrl = "jdbc:mysql://localhost:3306/gs"
+    val jdbcUrl = "jdbc:mysql://192.168.0.100:3306/gs"
     val username = "root"
     val password = "123456"
 
